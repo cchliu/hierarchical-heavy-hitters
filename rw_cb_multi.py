@@ -18,13 +18,16 @@ error = p_init * 0.5
 xi = 1.0
 threshold = 25
 
-# Stucture for current checking node
+# Stucture for tracking node average
 class node_status(object):
     def __init__(self, node, curr_s):
         self.node = node
         self.x_mean = 0
         self.s = curr_s
- 
+
+# :param HHH_nodes: a list to store HHH's detected
+global HHH_nodes
+HHH_nodes = []
 #---------------------------------------#
 """Setup global parameters before running the algo.
 
@@ -47,7 +50,6 @@ def read(node):
     """Read traffic data of node at the current time_interval.
 
         :param node: The node whose value to read.
-        :param time_interval: The current time interval.
     """
     global file_handler, levels
     ff = file_handler
@@ -127,6 +129,7 @@ def rw_cb_algo():
     ns_reading = node_status(reading_node, 0)
     
     # HHH nodes set
+    global HHH_nodes
     HHH_nodes = []
     while True:
         try:
@@ -152,6 +155,7 @@ def rw_cb_algo():
                 elif O_func_outcome == 2:
                     # Probably an HHH
                     #declare(checking_node)
+                    HHH_nodes.append(checking_node)
                     print "Find HHH is {0} at time interval {1}".format(checking_node, time_interval)
                 else:
                     print "Error: O_func_outcome can only be 1 or 2 after observation loop breaks"
@@ -167,6 +171,13 @@ def rw_cb_algo():
                     ns.s += 1.0
                     O_func_outcome = O_func(ns.x_mean, ns.s, threshold, p_zero, p_zero)
                 
+                if checking_level == 0:
+                    """Root node."""
+                    if O_func_outcome == 1:
+                        # Probably no more HHHes remained to be detected
+                        print "At t = {0}, stop the search.".format(time_interval)
+                        break
+
                 if O_func_outcome == 1:
                     # Praobably not an HHH, zoom out to parent node
                     checking_node = par(checking_node)
@@ -219,6 +230,7 @@ def rw_cb_algo():
                             # Neither left child nort right child an HHH, but current node probably an HHH
                             if p_zero < error:
                                 #declare(checking_node)
+                                HHH_nodes.append(checking_node)
                                 print "Find HHH is {0} at time interval {1}".format(checking_node, time_interval)
                                 break
                             else:
