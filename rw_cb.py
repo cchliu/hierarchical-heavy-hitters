@@ -126,6 +126,7 @@ def rw_cb_algo():
         try:
             checking_level = checking_node[0]
             if checking_level == L_depth:
+                """Leaf node."""
                 # Observe the node until O_func outcome is 1 or 2
                 # Until one of the equations holds
                 O_func_outcome = 0
@@ -135,17 +136,23 @@ def rw_cb_algo():
                     ns.x_mean = (ns.x_mean * ns.s + node_val) / float(ns.s + 1.0)
                     ns.s += 1.0
                     O_func_outcome = O_func(ns.x_mean, ns.s, threshold, p_zero, error)
+
                 if O_func_outcome == 1:
+                    # Probably not an HHH, zoom out to parent node
                     checking_node = par(checking_node)
                     reading_node = checking_node
                     ns = node_status(checking_node, 0)
                     continue
                 elif O_func_outcome == 2:
+                    # Probably an HHH
                     #declare(checking_node)
                     print "Find HHH is {0} at time interval {1}".format(checking_node, time_interval)
                 else:
                     print "Error: O_func_outcome can only be 1 or 2 after observation loop breaks"
             if checking_level < L_depth:
+                """Not a leaf node."""
+                # Observe the node until O_func outcome is 1 or 2
+                # Until one of the equation holds
                 O_func_outcome = 0
                 while O_func_outcome == 0:
                     node_val = read(reading_node)
@@ -153,12 +160,17 @@ def rw_cb_algo():
                     ns.x_mean = (ns.x_mean * ns.s + node_val) / float(ns.s+1.0)
                     ns.s += 1.0
                     O_func_outcome = O_func(ns.x_mean, ns.s, threshold, p_zero, p_zero)
+                
                 if O_func_outcome == 1:
+                    # Praobably not an HHH, zoom out to parent node
                     checking_node = par(checking_node)
                     reading_node = checking_node
                     ns = node_status(checking_node, 0)
                     continue
                 elif O_func_outcome == 2:
+                    # Probably there exists an HHH under this prefix, zoom in
+                    
+                    # Observe left child until O_func outcome is 1 or 2
                     reading_node = left_child(checking_node)
                     O_func_outcome = 0
                     ns_reading = node_status(reading_node, 0)
@@ -168,12 +180,17 @@ def rw_cb_algo():
                         ns_reading.x_mean = (ns_reading.x_mean * ns_reading.s + node_val) / float(ns_reading.s+1.0)
                         ns_reading.s += 1.0
                         O_func_outcome = O_func(ns_reading.x_mean, ns_reading.s, threshold, p_zero, p_zero)
+
                     if O_func_outcome == 2:
+                        # Probably there exisits an HHH under this left child
+                        # Move to left child
                         checking_node = left_child(checking_node)
                         reading_node = checking_node
                         ns = ns_reading
                         continue
                     elif O_func_outcome == 1:
+                        # Probably left child not an HHH
+                        # Observe right child until O_func outcome is 1 or 2
                         reading_node = right_child(checking_node)
                         O_func_outcome = 0
                         ns_reading = node_status(reading_node, 0)
@@ -183,12 +200,17 @@ def rw_cb_algo():
                             ns_reading.x_mean = (ns_reading.x_mean * ns_reading.s + node_val) / float(ns_reading.s+1.0)
                             ns_reading.s += 1.0
                             O_func_outcome = O_func(ns_reading.x_mean, ns_reading.s, threshold, p_zero, p_zero)
+
                         if O_func_outcome == 2:
+                            # Probably there exists an HHH under this right child
+                            # Move to right child
                             checking_node = right_child(checking_node)
                             reading_node = checking_node
                             ns = ns_reading
                             continue
                         elif O_func_outcome == 1:
+                            # Probably right child not an HHH
+                            # Neither left child nort right child an HHH, but current node probably an HHH
                             if p_zero < error:
                                 #declare(checking_node)
                                 print "Find HHH is {0} at time interval {1}".format(checking_node, time_interval)
