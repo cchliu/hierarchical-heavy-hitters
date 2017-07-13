@@ -63,6 +63,7 @@ def fillTree(leaf_nodes, vals, threshold):
 
 def findHHH(root, threshold):
     curr_nodes = [root]
+    HHH_nodes = []
     while(curr_nodes):
         next_nodes = []
         for node in curr_nodes:
@@ -71,8 +72,12 @@ def findHHH(root, threshold):
             if node.right:
                 next_nodes.append(node.right) 
             if node.HHH_val >= threshold:
-                print "t = {0}, node {1} is an HHH".format(counter, node.tag)
+                HHH_nodes.append(node.tag)
+                #print "t = {0}, node {1} is an HHH".format(counter, node.tag)
         curr_nodes = next_nodes
+    output = ["node {0}".format(node_tag) for node_tag in HHH_nodes]
+    outstr = ','.join(output)
+    print "t = {0}, ".format(counter) + outstr + " are HHH's"
 
 def clearTree(root):
     curr_nodes = [root]
@@ -110,6 +115,7 @@ def main():
      
     # Read traffic data
     infile = "traffic.txt"
+    infile = "traffic_twoHHH.txt"
     global counter
     counter = 0 
     with open(infile, 'rb') as ff:
