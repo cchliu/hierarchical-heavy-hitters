@@ -15,7 +15,7 @@ levels = 4
 global threshold, xi, p_zero, error
 p_init = 1 - 1.0 / (2**(1.0/3.0))
 error = p_init * 0.5
-xi = 1.0
+xi = 3.0
 threshold = 25
 
 # Stucture for tracking node average
