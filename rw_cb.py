@@ -14,6 +14,7 @@ levels = 4
 # :param p_zero: initialize p_zero
 global threshold, xi, p_zero, error
 p_init = 1 - 1.0 / (2**(1.0/3.0))
+p_zero = p_init * 0.9
 error = p_init * 0.5
 xi = 1.0
 threshold = 25
@@ -29,7 +30,7 @@ class node_status(object):
 """Setup global parameters before running the algo.
 
     :param threshold: HHH threshold.
-    :param epsno: parameter in equation (31) or (32).
+    :param xi: parameter in equation (31) or (32).
     :param levels: The depth of tree.
     :param p_zero: Initialize p_zero.
     :param error: Error 
@@ -38,9 +39,17 @@ def setup_params_error(val):
     global error
     error = val
 
+def setup_params_xi(val):
+    global xi
+    xi = val
+
+def setup_params_pzero(val):
+    global p_zero
+    p_zero = val
+
 def print_params():
-    global error, threshold
-    print "Error: {0}, Threshold: {1}".format(error, threshold)
+    global error, xi, threshold, p_zero
+    print "Error: {0}, Threshold: {1}, Xi: {2}, p_zero initialized to {3}".format(error, threshold, xi, p_zero)
 #---------------------------------------#
 
 def read(node):
@@ -115,7 +124,7 @@ def rw_cb_algo():
     # Initialize global parameters
     global time_interval, p_zero, error, threshold
     time_interval = 0
-    p_zero = p_init * 0.9
+    #p_zero = p_init * 0.9
     reading_node, checking_node = (0,1), (0,1)
     ns = node_status(checking_node, 0)
     ns_reading = node_status(reading_node, 0)
