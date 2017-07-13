@@ -81,10 +81,10 @@ def O_func(x_mean, s, threshold, p1, p2):
     X_mean = x_mean
     curr_s = float(s)
     # Calculate the equation
-    equation_one = X_mean + math.sqrt(2*xi*math.log(2*xi*curr_s**3/p1, 2)/curr_s)
+    equation_one = X_mean + math.sqrt(2*xi*math.log(2*xi*curr_s**3/p1)/curr_s)
     if equation_one < threshold:
         return 1
-    equation_two = X_mean - math.sqrt(2*xi*math.log(2*xi*curr_s**3/p2, 2)/curr_s)
+    equation_two = X_mean - math.sqrt(2*xi*math.log(2*xi*curr_s**3/p2)/curr_s)
     if equation_two > threshold:
         return 2
     # Neither equ(1) or equ(2) holds

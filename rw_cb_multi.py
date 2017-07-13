@@ -14,6 +14,7 @@ levels = 4
 # :param p_zero: initialize p_zero
 global threshold, xi, p_zero, error
 p_init = 1 - 1.0 / (2**(1.0/3.0))
+p_zero = p_init * 0.9
 error = p_init * 0.5
 xi = 3.0
 threshold = 25
@@ -42,9 +43,17 @@ def setup_params_error(val):
     global error
     error = val
 
+def setup_params_xi(val):
+    global xi
+    xi = val
+
+def setup_params_pzero(val):
+    global p_zero
+    p_zero = val
+
 def print_params():
-    global error, threshold
-    print "Error: {0}, Threshold: {1}".format(error, threshold)
+    global error, xi, threshold, p_zero
+    print "Error: {0}, Threshold: {1}, Xi: {2}, p_zero initialized to {3}".format(error, threshold, xi, p_zero)
 #---------------------------------------#
 
 def subtract_HHH(ns):
@@ -146,10 +155,10 @@ def O_func(x_mean, s, threshold, p1, p2):
     X_mean = x_mean
     curr_s = float(s)
     # Calculate the equation
-    equation_one = X_mean + math.sqrt(2*xi*math.log(2*xi*curr_s**3/p1, 2)/curr_s)
+    equation_one = X_mean + math.sqrt(2*xi*math.log(2*xi*curr_s**3/p1)/curr_s)
     if equation_one < threshold:
         return 1
-    equation_two = X_mean - math.sqrt(2*xi*math.log(2*xi*curr_s**3/p2, 2)/curr_s)
+    equation_two = X_mean - math.sqrt(2*xi*math.log(2*xi*curr_s**3/p2)/curr_s)
     if equation_two > threshold:
         return 2
     # Neither equ(1) or equ(2) holds
@@ -189,7 +198,7 @@ def rw_cb_algo():
     # Initialize global parameters
     global time_interval, p_zero, error, threshold
     time_interval = 0
-    p_zero = p_init * 0.9
+    #p_zero = p_init * 0.9
 
     # depth of the tree
     global levels
