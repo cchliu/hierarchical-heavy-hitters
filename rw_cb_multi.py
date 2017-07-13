@@ -27,7 +27,8 @@ class node_status(object):
 
 # :param HHH_nodes: a list to store HHH's detected
 global HHH_nodes
-HHH_nodes = []
+# key: (l, k), value: :class:`node_status' 
+HHH_nodes = {}
 #---------------------------------------#
 """Setup global parameters before running the algo.
 
@@ -46,8 +47,75 @@ def print_params():
     print "Error: {0}, Threshold: {1}".format(error, threshold)
 #---------------------------------------#
 
+def subtract_HHH(ns):
+    """Modify the count of node by substracting the count 
+    of its HHH decendants."""
+    global HHH_nodes
+    node = ns.node
+    node_level, node_k = node
+    hhh_descendants = []
+
+    for hhh_node in HHH_nodes.keys():
+        curr_level, curr_k = hhh_node
+        while curr_level >= node_level:
+            if node == (curr_level, curr_k):
+                hhh_descendants.append(hhh_node)
+            curr_level -= 1
+            curr_k = (curr_k + 1) / 2
+    
+    # One HHH might be the descendant of another HHH
+    # In this case, we only subtract the count of the HHH, which
+    # is closer to the node.
+    hhh_finalist = []
+    hhh_descendants = sorted(hhh_descendants, key = lambda x: x[0], reverse=True)
+    for idx, hhh_node in enumerate(hhh_descendants):
+        curr_level, curr_k = hhh_node
+        flag = False
+        while curr_level >= node_level:
+            if (curr_level, curr_k) in hhh_descendants[idx+1:]:
+                flag = True
+                break
+            curr_level -= 1
+            curr_k = (curr_k + 1) /2
+        
+        # This hhh node is not overshadowed by another hhh node, which
+        # is closer to the node.
+        if not flag:
+            hhh_finalist.append(hhh_node)
+
+    mod_x_mean = ns.x_mean
+    for hhh_node in hhh_finalist:
+        mod_x_mean -= HHH_nodes[hhh_node].x_mean
+    return mod_x_mean
+        
+    
+def update_count_HHH(line):
+    """If the HHH_nodes set are not empty, for each identified HHH_node,
+    keep counting the sample mean of it."""
+    global HHH_nodes, levels
+    for node in HHH_nodes.keys():
+        node_level, node_k = node
+        node_val = 0
+        for idx, val in enumerate(line):
+            curr_level = levels - 1
+            curr_k = idx + 1
+            while(curr_level >= node_level):
+                if node == (curr_level, curr_k):
+                    node_val += val
+                curr_level -= 1
+                curr_k = (curr_k + 1) /2
+        ns = HHH_nodes[node]
+        ns.x_mean = (ns.x_mean * ns.s + node_val) / float(ns.s + 1.0)
+        ns.s += 1.0
+
 def read(node):
     """Read traffic data of node at the current time_interval.
+    
+    If the HHH_nodes set are not empty, for each identified HHH_node,
+    keep counting the sample mean of it.
+
+    If the HHH_nodes set are not empty, the sample mean of all the parents 
+    of an HHH_node is modified by subtracting the sample mean of this HHH_node.
 
         :param node: The node whose value to read.
     """
@@ -57,6 +125,10 @@ def read(node):
     if not line:
         raise EOFError 
     line = [int(k) for k in line.split(',')]
+    
+    # update time average count for HHH_nodes
+    update_count_HHH(line)
+
     node_val = 0
     node_level, node_k = node
     for idx, val in enumerate(line):
@@ -110,7 +182,7 @@ def right_child(node):
 
 def rw_cb_algo():
     global file_handler
-    infile = "traffic.txt"
+    infile = "traffic_twoHHH.txt"
     ff = open(infile, 'rb')
     file_handler = ff
 
@@ -130,7 +202,7 @@ def rw_cb_algo():
     
     # HHH nodes set
     global HHH_nodes
-    HHH_nodes = []
+    HHH_nodes = {}
     while True:
         try:
             checking_level = checking_node[0]
@@ -144,8 +216,12 @@ def rw_cb_algo():
                     time_interval += 1
                     ns.x_mean = (ns.x_mean * ns.s + node_val) / float(ns.s + 1.0)
                     ns.s += 1.0
-                    O_func_outcome = O_func(ns.x_mean, ns.s, threshold, p_zero, error)
 
+                    # Modify the node count by subtracting the time average count of 
+                    # identified HHH descendants.
+                    mod_x_mean = subtract_HHH(ns) 
+                    O_func_outcome = O_func(mod_x_mean, ns.s, threshold, p_zero, error)
+                    
                 if O_func_outcome == 1:
                     # Probably not an HHH, zoom out to parent node
                     checking_node = par(checking_node)
@@ -155,27 +231,57 @@ def rw_cb_algo():
                 elif O_func_outcome == 2:
                     # Probably an HHH
                     #declare(checking_node)
-                    HHH_nodes.append(checking_node)
+                    HHH_nodes[checking_node] = ns
                     print "Find HHH is {0} at time interval {1}".format(checking_node, time_interval)
+
+                    # Reset the pointer at the root node (l,k) = (0,1)
+                    checking_node = (0,1)
+                    reading_node = checking_node
+                    ns = node_status(checking_node, 0)
                 else:
                     print "Error: O_func_outcome can only be 1 or 2 after observation loop breaks"
-            if checking_level < L_depth:
+
+            elif checking_level < L_depth:
                 """Not a leaf node."""
                 # Observe the node until O_func outcome is 1 or 2
                 # Until one of the equation holds
                 O_func_outcome = 0
-                while O_func_outcome == 0:
-                    node_val = read(reading_node)
-                    time_interval += 1
-                    ns.x_mean = (ns.x_mean * ns.s + node_val) / float(ns.s+1.0)
-                    ns.s += 1.0
-                    O_func_outcome = O_func(ns.x_mean, ns.s, threshold, p_zero, p_zero)
-                
+                if checking_level > 0:
+                    while O_func_outcome == 0:
+                        node_val = read(reading_node)
+                        time_interval += 1
+                        ns.x_mean = (ns.x_mean * ns.s + node_val) / float(ns.s+1.0)
+                        ns.s += 1.0
+
+                        # Modify the node count by subtracting the time average count of 
+                        # identified HHH descendants.
+                        mod_x_mean = subtract_HHH(ns)
+                        O_func_outcome = O_func(mod_x_mean, ns.s, threshold, p_zero, p_zero)
+                elif checking_level == 0:
+                    """Root node."""
+                    while O_func_outcome == 0:
+                        node_val = read(reading_node)
+                        time_interval += 1
+                        ns.x_mean = (ns.x_mean * ns.s + node_val) / float(ns.s+1.0)
+                        ns.s += 1.0
+
+                        # Modify the node count by subtracting the time average count of
+                        # identified HHH descendants.
+                        mod_x_mean = subtract_HHH(ns)
+                        O_func_outcome = O_func(mod_x_mean, ns.s, threshold, error, p_zero)
+                else:
+                    print "Error: invalid node level."
+
                 if checking_level == 0:
                     """Root node."""
                     if O_func_outcome == 1:
+                        ### DEBUG: 
+                        print "root node count: {0} and modified count: {1}".format(ns.x_mean, mod_x_mean)
                         # Probably no more HHHes remained to be detected
                         print "At t = {0}, stop the search.".format(time_interval)
+                        output = ["node {0}".format(node_tag) for node_tag in HHH_nodes.keys()]
+                        outstr = ','.join(output)
+                        print "t = {0}, ".format(time_interval) + outstr + " are HHH's"
                         break
 
                 if O_func_outcome == 1:
@@ -196,7 +302,11 @@ def rw_cb_algo():
                         time_interval += 1
                         ns_reading.x_mean = (ns_reading.x_mean * ns_reading.s + node_val) / float(ns_reading.s+1.0)
                         ns_reading.s += 1.0
-                        O_func_outcome = O_func(ns_reading.x_mean, ns_reading.s, threshold, p_zero, p_zero)
+
+                        # Modify the node count by subtracting the time average count of 
+                        # identified HHH descendants.
+                        mod_x_mean = subtract_HHH(ns_reading)
+                        O_func_outcome = O_func(mod_x_mean, ns_reading.s, threshold, p_zero, p_zero)
 
                     if O_func_outcome == 2:
                         # Probably there exisits an HHH under this left child
@@ -216,7 +326,11 @@ def rw_cb_algo():
                             time_interval += 1
                             ns_reading.x_mean = (ns_reading.x_mean * ns_reading.s + node_val) / float(ns_reading.s+1.0)
                             ns_reading.s += 1.0
-                            O_func_outcome = O_func(ns_reading.x_mean, ns_reading.s, threshold, p_zero, p_zero)
+
+                            # Modify the node count by subtracting the time average count of
+                            # identified HHH descendants.
+                            mod_x_mean = subtract_HHH(ns_reading)
+                            O_func_outcome = O_func(mod_x_mean, ns_reading.s, threshold, p_zero, p_zero)
 
                         if O_func_outcome == 2:
                             # Probably there exists an HHH under this right child
@@ -230,9 +344,13 @@ def rw_cb_algo():
                             # Neither left child nort right child an HHH, but current node probably an HHH
                             if p_zero < error:
                                 #declare(checking_node)
-                                HHH_nodes.append(checking_node)
+                                HHH_nodes[checking_node] = ns
                                 print "Find HHH is {0} at time interval {1}".format(checking_node, time_interval)
-                                break
+                                
+                                # Reset the pointer to the root node (l,k) = (0,1)
+                                checking_node = (0, 1)
+                                reading_node = checking_node
+                                ns = node_status(checking_node, 0)
                             else:
                                 p_zero /= 2.0
                         else:
