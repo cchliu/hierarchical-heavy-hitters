@@ -1,8 +1,11 @@
 # Two pointers:
 # Pointer p: current checking node
 # Pointer q: current reading node
+import sys
 import math
-
+import logging
+LOG = logging.getLogger(__name__)
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 # :param time_interval: the index of current time interval
 # :param file_handler: file object to read traffic data from
 # :param levels: the depth of tree 
@@ -241,14 +244,16 @@ def rw_cb_algo():
                     # Probably an HHH
                     #declare(checking_node)
                     HHH_nodes[checking_node] = ns
-                    print "Find HHH is {0} at time interval {1}".format(checking_node, time_interval)
+                    #print "Find HHH is {0} at time interval {1}".format(checking_node, time_interval)
+                    LOG.debug("Find HHH is {0} at time interval {1}".format(checking_node, time_interval))
 
                     # Reset the pointer at the root node (l,k) = (0,1)
                     checking_node = (0,1)
                     reading_node = checking_node
                     ns = node_status(checking_node, 0)
                 else:
-                    print "Error: O_func_outcome can only be 1 or 2 after observation loop breaks"
+                    #print "Error: O_func_outcome can only be 1 or 2 after observation loop breaks"
+                    LOG.error("Error: O_func_outcome can only be 1 or 2 after observation loop breaks.")
 
             elif checking_level < L_depth:
                 """Not a leaf node."""
@@ -279,18 +284,22 @@ def rw_cb_algo():
                         mod_x_mean = subtract_HHH(ns)
                         O_func_outcome = O_func(mod_x_mean, ns.s, threshold, error, p_zero)
                 else:
-                    print "Error: invalid node level."
+                    #print "Error: invalid node level."
+                    LOG.error("Error: invalid node level.")
 
                 if checking_level == 0:
                     """Root node."""
                     if O_func_outcome == 1:
                         ### DEBUG: 
-                        print "root node count: {0} and modified count: {1}".format(ns.x_mean, mod_x_mean)
+                        #print "root node count: {0} and modified count: {1}".format(ns.x_mean, mod_x_mean)
+                        LOG.debug("root node count: {0} and modified count: {1}".format(ns.x_mean, mod_x_mean))
                         # Probably no more HHHes remained to be detected
-                        print "At t = {0}, stop the search.".format(time_interval)
+                        #print "At t = {0}, stop the search.".format(time_interval)
+                        LOG.info("At t = {0}, stop the search.".format(time_interval))
                         output = ["node {0}".format(node_tag) for node_tag in HHH_nodes.keys()]
                         outstr = ','.join(output)
-                        print "t = {0}, ".format(time_interval) + outstr + " are HHH's"
+                        #print "t = {0}, ".format(time_interval) + outstr + " are HHH's"
+                        LOG.info("t = {0}, ".format(time_interval) + outstr + " are HHH's")
                         break
 
                 if O_func_outcome == 1:
@@ -354,7 +363,8 @@ def rw_cb_algo():
                             if p_zero < error:
                                 #declare(checking_node)
                                 HHH_nodes[checking_node] = ns
-                                print "Find HHH is {0} at time interval {1}".format(checking_node, time_interval)
+                                #print "Find HHH is {0} at time interval {1}".format(checking_node, time_interval)
+                                LOG.debug("Find HHH is {0} at time interval {1}".format(checking_node, time_interval))
                                 
                                 # Reset the pointer to the root node (l,k) = (0,1)
                                 checking_node = (0, 1)
@@ -363,11 +373,14 @@ def rw_cb_algo():
                             else:
                                 p_zero /= 2.0
                         else:
-                            print "Error: O_func_outcome can only be 1 or 2 after observation loop breaks"
+                            #print "Error: O_func_outcome can only be 1 or 2 after observation loop breaks"
+                            LOG.error("Error: O_func_outcome can only be 1 or 2 after observation loop breaks.")
                     else:
-                        print "Error: O_func_outcome can only be 1 or 2 after observation loop breaks"
+                        #print "Error: O_func_outcome can only be 1 or 2 after observation loop breaks"
+                        LOG.error("Error: O_func_outcome can only be 1 or 2 after observation loop breaks.")
         except EOFError:
-            print "End of file error occurred."
+            #print "End of file error occurred."
+            LOG.error("Error: End of file error occurred.")
             break
     # Close traffic file
     ff.close()
