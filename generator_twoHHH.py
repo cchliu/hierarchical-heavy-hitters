@@ -6,14 +6,14 @@
   110       15
   101       1
   100       1
-  011       1
-  010       9
-  001       10
-  000       10
+  011       6
+  010       8
+  001       8
+  000       8
 """
 import numpy as np
 
-lambda_lists = [15, 15, 1, 1, 1, 9, 10, 10]
+lambda_lists = [15, 15, 1, 1, 6, 8, 8, 8]
 traffic_file = "traffic_twoHHH.txt"
 
 results = []
