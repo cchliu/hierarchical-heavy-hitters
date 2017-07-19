@@ -1,26 +1,12 @@
-# Two pointers:
-# Pointer p: current checking node
-# Pointer q: current reading node
+"""Capsulate rw_cb algorithm into a class.
+
+    Run the algo like a state machine. 
+"""
 import sys
 import math
 import logging
-LOG = logging.getLogger(__name__)
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-# :param time_interval: the index of current time interval
-# :param file_handler: file object to read traffic data from
-# :param levels: the depth of tree 
-global time_interval, file_handler, levels
-levels = 4
 
-# :param threshold: HHH threshold
-# :param epsno: parameter in equation (31) or (32)
-# :param p_zero: initialize p_zero
-global threshold, xi, p_zero, error
-p_init = 1 - 1.0 / (2**(1.0/3.0))
-p_zero = p_init * 0.9
-error = p_init * 0.5
-xi = 3.0
-threshold = 25
+from rwcb_multi_read import read_node, subtract_hhh, update_hhh_set
 
 # Stucture for tracking node average
 class node_status(object):
@@ -29,132 +15,8 @@ class node_status(object):
         self.x_mean = 0
         self.s = curr_s
 
-# :param HHH_nodes: a list to store HHH's detected
-global HHH_nodes
-# key: (l, k), value: :class:`node_status' 
-HHH_nodes = {}
-#---------------------------------------#
-"""Setup global parameters before running the algo.
 
-    :param threshold: HHH threshold.
-    :param epsno: parameter in equation (31) or (32).
-    :param levels: The depth of tree.
-    :param p_zero: Initialize p_zero.
-    :param error: Error 
-"""
-def setup_params_error(val):
-    global error
-    error = val
-
-def setup_params_xi(val):
-    global xi
-    xi = val
-
-def setup_params_pzero(val):
-    global p_zero
-    p_zero = val
-
-def print_params():
-    global error, xi, threshold, p_zero
-    print "Error: {0}, Threshold: {1}, Xi: {2}, p_zero initialized to {3}".format(error, threshold, xi, p_zero)
-#---------------------------------------#
-
-def subtract_HHH(ns):
-    """Modify the count of node by substracting the count 
-    of its HHH decendants."""
-    global HHH_nodes
-    node = ns.node
-    node_level, node_k = node
-    hhh_descendants = []
-
-    for hhh_node in HHH_nodes.keys():
-        curr_level, curr_k = hhh_node
-        while curr_level >= node_level:
-            if node == (curr_level, curr_k):
-                hhh_descendants.append(hhh_node)
-            curr_level -= 1
-            curr_k = (curr_k + 1) / 2
-    
-    # One HHH might be the descendant of another HHH
-    # In this case, we only subtract the count of the HHH, which
-    # is closer to the node.
-    hhh_finalist = []
-    hhh_descendants = sorted(hhh_descendants, key = lambda x: x[0], reverse=True)
-    for idx, hhh_node in enumerate(hhh_descendants):
-        curr_level, curr_k = hhh_node
-        flag = False
-        while curr_level >= node_level:
-            if (curr_level, curr_k) in hhh_descendants[idx+1:]:
-                flag = True
-                break
-            curr_level -= 1
-            curr_k = (curr_k + 1) /2
-        
-        # This hhh node is not overshadowed by another hhh node, which
-        # is closer to the node.
-        if not flag:
-            hhh_finalist.append(hhh_node)
-
-    mod_x_mean = ns.x_mean
-    for hhh_node in hhh_finalist:
-        mod_x_mean -= HHH_nodes[hhh_node].x_mean
-    return mod_x_mean
-        
-    
-def update_count_HHH(line):
-    """If the HHH_nodes set are not empty, for each identified HHH_node,
-    keep counting the sample mean of it."""
-    global HHH_nodes, levels
-    for node in HHH_nodes.keys():
-        node_level, node_k = node
-        node_val = 0
-        for idx, val in enumerate(line):
-            curr_level = levels - 1
-            curr_k = idx + 1
-            while(curr_level >= node_level):
-                if node == (curr_level, curr_k):
-                    node_val += val
-                curr_level -= 1
-                curr_k = (curr_k + 1) /2
-        ns = HHH_nodes[node]
-        ns.x_mean = (ns.x_mean * ns.s + node_val) / float(ns.s + 1.0)
-        ns.s += 1.0
-
-def read(node):
-    """Read traffic data of node at the current time_interval.
-    
-    If the HHH_nodes set are not empty, for each identified HHH_node,
-    keep counting the sample mean of it.
-
-    If the HHH_nodes set are not empty, the sample mean of all the parents 
-    of an HHH_node is modified by subtracting the sample mean of this HHH_node.
-
-        :param node: The node whose value to read.
-    """
-    global file_handler, levels
-    ff = file_handler
-    line = ff.readline().rstrip('\n')
-    if not line:
-        raise EOFError 
-    line = [int(k) for k in line.split(',')]
-    
-    # update time average count for HHH_nodes
-    update_count_HHH(line)
-
-    node_val = 0
-    node_level, node_k = node
-    for idx, val in enumerate(line):
-        curr_level = levels-1
-        curr_k = idx + 1
-        while(curr_level >= node_level):
-            if node == (curr_level, curr_k):
-                node_val += val
-            curr_level -= 1
-            curr_k = (curr_k + 1) / 2
-    return node_val
-
-def O_func(x_mean, s, threshold, p1, p2):
-    global xi 
+def O_func(x_mean, s, threshold, p1, p2, xi):
     X_mean = x_mean
     curr_s = float(s)
     # Calculate the equation
@@ -168,25 +30,25 @@ def O_func(x_mean, s, threshold, p1, p2):
     return 0
 
 # Find parent/left child/right child node along the tree
-def par(node):
+def par(node, root_level):
     node_level, node_k = node
-    if node_level == 0:
+    if node_level == root_level:
         return node
     par_node_level = node_level - 1
     par_node_k = (node_k + 1) / 2
     return (par_node_level, par_node_k)
 
-def left_child(node):
+def left_child(node, leaf_level):
     node_level, node_k = node
-    if node_level == levels - 1:
+    if node_level == leaf_level:
         return None
     left_child_level = node_level + 1
     left_child_k = node_k*2 - 1
     return (left_child_level, left_child_k)
 
-def right_child(node):
+def right_child(node, leaf_level):
     node_level, node_k = node
-    if node_level == levels - 1:
+    if node_level == leaf_level:
         return None
     right_child_level = node_level + 1
     right_child_k = node_k*2
@@ -195,14 +57,22 @@ def right_child(node):
 
 class rwcb_algo(object):
     """Rewrite rwcb_multi algorithm as a state machine."""
-    def __init__(self, threshold, p_zero, error):
+    def __init__(self, threshold, p_zero, error, xi):
         # Logger
         self.logger = logging.getLogger(__name__)
-        logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+        logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
         # :param p_zero: initialize p_zero
-        p_init = 1 - 1.0 / (2**(1.0/3.0))
-        self.p_zero = p_init * 0.9
+        # :param threshold: HHH threshold
+        # :param error
+        # :param xi: parameter in equation (31) or (32)
+        self.p_zero = p_zero
+        self.threshold = threshold
+        self.error = error
+        self.xi = xi
+
+        # :param time_interval: The index of current time interval.
+        self.time_interval = 0
 
         # Parameters about the tree
         self.leaf_level = 0
@@ -214,7 +84,7 @@ class rwcb_algo(object):
         self.ns = node_status(self.checking_node, 0)
         self.ns_reading = node_status(self.reading_node, 0)
 
-    def set_root_node(self, root_node):
+    def _set_root_node(self, root_node):
         root_level, root_index = root_node
         self.root_level = root_level
         self.root_index = root_index
@@ -222,154 +92,184 @@ class rwcb_algo(object):
     def set_leaf_level(self, leaf_level):
         self.leaf_level = leaf_level
 
-    def init_start_node(self):
-        self.reading_node = (self.root_level, self.root_index)
-        self.checking_node = (self.root_level, self.root_index)
+    def init_start_node(self, root_node):
+        self._set_root_node(root_node)
+        self.reading_node = root_node
+        self.checking_node = root_node
         self.ns = node_status(self.checking_node, 0)
-        self.ns_reading = ndoe_status(self.reading_node, 0)
+        self.ns_reading = node_status(self.reading_node, 0)
 
-    def statesman(self, state):
+    def set_time_interval(self, val):
+        self.time_interval = val
+
+    def set_logging_level(self, level):
+        self.logger.setLevel(level)
+
+    def statesman(self, state, line, leaf_level, HHH_nodes):
+        """Entry function.
+        
+            :param state: Next state, jump to corresponding function.
+            :param line: Traffic count for all leaf nodes in the tree.
+            :param leaf_level: The depth of the tree.
+            :param HHH_nodes: The list of HHH nodes found up-to-now.
+        """
         if state == "state_one":
             checking_level = self.checking_node[0]
             if checking_level == self.leaf_level:
-                return self.state_one_leaf()
+                """Leaf node."""
+                return self.state_one_leaf(line, leaf_level, HHH_nodes)
+            elif checking_level < self.leaf_level:
+                """Non-leaf node."""
+                return self.state_one_nonleaf(line, leaf_level, HHH_nodes)
+        elif state == "state_two":
+            return self.state_two(line, leaf_level, HHH_nodes)
+        elif state == "state_three":
+            return self.state_three(line, leaf_level, HHH_nodes)
 
-    def state_one_leaf(self):
+    def state_one_leaf(self, line, leaf_level, HHH_nodes):
         state_tag = "state_one_leaf"
         """Leaf node."""
         # Observe the node until O_func outcome is 1 or 2
         # Until one of the equations holds.
-        node_val = read(self.reading_node)
+        node_val = read_node(self.reading_node, line, leaf_level)
         #time_interval += 1
         self.ns.x_mean = (self.ns.x_mean * self.ns.s + node_val) / float(self.ns.s + 1.0)
         self.ns.s += 1.0
 
         # Modify the node count by subtracting the time average count of
         # identified HHH descendants.
-        mod_x_mean = subtract_HHH(self.ns)
-        O_func_outcome = O_func(mod_x_mean, self.ns.s, threshold, self.p_zero, error) 
+        mod_x_mean = subtract_hhh(self.ns, HHH_nodes)
+        O_func_outcome = O_func(mod_x_mean, self.ns.s, self.threshold, self.p_zero, self.error, self.xi) 
         
         if O_func_outcome == 0:
-            return "state_one_leaf"
+            return "state_one"
         elif O_func_outcome == 1:
             # Probably not an HHH, zoom out to parent node
-            self.checking_node = par(self.checking_node)
-            self.reading_node = self.checking_node            
+            self.checking_node = par(self.checking_node, self.root_level)
+            self.reading_node = self.checking_node          
             self.ns = node_status(self.checking_node, 0)
-            return "state_one_leaf"
+            return "state_one"
         elif O_func_outcome == 2:
             # Probably an HHH
-            update_hhh_set(self.ns)
+            update_hhh_set(self.ns, HHH_nodes)
+            self.logger.debug("Find HHH {0} at time interval {1}".format(self.checking_node, self.time_interval))
             
             # Reset the pointer at the root node of subtree (l,k) = (0, 1)
             self.checking_node = (self.root_level, self.root_index)
             self.reading_node = self.checking_node
             self.ns = node_status(self.checking_node, 0)
-            return "state_one_leaf"
+            return "state_one"
         else:
             self.logger.error("Error: O_func_outcome can only be 1 or 2 after observation loop breaks.")            
 
-    def state_one_nonleaf(self):
+    def state_one_nonleaf(self, line, leaf_level, HHH_nodes):
         state_tag = "state_one_nonleaf"
         """Not a leaf node."""
         # Observe the node until O_func outcome is 1 or 2
         # Until one of the equation holds
-        node_val = read(self.reading_node)
-        time_interval += 1
+        node_val = read_node(self.reading_node, line, leaf_level)
+        #time_interval += 1
         self.ns.x_mean = (self.ns.x_mean * self.ns.s + node_val) / float(self.ns.s + 1.0)
         self.ns.s += 1.0
 
         # Modify the node count by subtracting the time average count of
         # identified HHH descendants.
-        mod_x_mean = subtract_HHH(self.ns)
+        mod_x_mean = subtract_hhh(self.ns, HHH_nodes)
         
         checking_level = self.checking_node[0]
         if checking_level > self.root_level:
-            O_func_outcome = O_func(mod_x_mean, self.ns.s, threshold, p_zero, p_zero)
+            O_func_outcome = O_func(mod_x_mean, self.ns.s, self.threshold, self.p_zero, self.p_zero, self.xi)
         elif checking_level == self.root_level:
             """Root node."""
-            O_func_outcome = O_func(mod_x_mean, self.ns.s, threshold, error, p_zero)
+            O_func_outcome = O_func(mod_x_mean, self.ns.s, self.threshold, self.error, self.p_zero, self.xi)
         else:
             self.logger.error("Error: invalid node level.")
 
+        if O_func_outcome == 0:
+            return "state_one"
         if checking_level == self.root_level:
             """Root node."""
             if O_func_outcome == 1:
-                self.logger.info("At t = {0}, stop the search.".format(time_interval)
-                output = ["node {0}".format(node_tag) for node_tag in HHH_nodes.keys()]
-                outstr = ','.join(output)
-                self.logger.info("t = {0}, ".format(time_interval) + outstr + " are HHH's")
+                self.logger.info("At t = {0}, stop the search.".format(self.time_interval))
                 return "break"
         if O_func_outcome == 1:
             # Probably not an HHH, zoom out to parent node
-            self.checking_node = par(self.checking_node)
+            self.checking_node = par(self.checking_node, self.root_level)
             self.reading_node = self.checking_node
             self.ns = node_status(self.checking_node, 0)
-            return "state_one_nonleaf"
+            return "state_one"
         elif O_func_outcome == 2:
             # Probably there exists an HHH under this prefix, zoom in
-            self.state_two_nonleaf()
+            # Observe left child in the next time interval
+            self.reading_node = left_child(self.checking_node, self.leaf_level)
+            self.ns_reading = node_status(self.reading_node, 0)
+            return "state_two"
 
-    def state_two_nonleaf(self):
+    def state_two(self, line, leaf_level, HHH_nodes):
         # Observe left child until O_func outcome is 1 or 2
-        self.reading_node = left_child(self.checking_node)
-        self.ns_reading = node_status(self.reading_node, 0)
-        node_val = read(self.reading_node)
-        time_interval += 1
+        node_val = read_node(self.reading_node, line, leaf_level)
+        #time_interval += 1
         self.ns_reading.x_mean = (self.ns_reading.x_mean * self.ns_reading.s + node_val) / float(self.ns_reading.s + 1.0)
         self.ns_reading.s += 1.0
 
         # Modify the node count by subtracting the time average count of 
         # identified HHH descendants.
-        mod_x_mean = subtract_HHH(self.ns_reading)
-        O_func_outcome = O_func(mod_x_mean, self.ns_reading.s, threshold, p_zero, p_zero)
-        if O_func_outcome == 2:
+        mod_x_mean = subtract_hhh(self.ns_reading, HHH_nodes)
+        O_func_outcome = O_func(mod_x_mean, self.ns_reading.s, self.threshold, self.p_zero, self.p_zero, self.xi)
+        if O_func_outcome == 0:
+            return "state_two" 
+        elif O_func_outcome == 2:
             # Probably there exisits an HHH under this left child
             # Move the left child
-            self.checking_node = left_child(self.checking_node)
+            self.checking_node = left_child(self.checking_node, self.leaf_level)
             self.reading_node = self.checking_node
             self.ns = self.ns_reading
             return "state_one"
         elif O_func_outcome == 1:
-            return state_three_nonleaf
+            # Probably left child not an HHH
+            # Observe right child in the next time interval
+            self.reading_node = right_child(self.checking_node, self.leaf_level)
+            self.ns_reading = node_status(self.reading_node, 0)
+            return "state_three"
 
-    def state_three_nonleaf(self):
+    def state_three(self, line, leaf_level, HHH_nodes):
             # Probably left child not an HHH
             # Observe right child until O_func outcome is 1 or 2
-            self.reading_node = right_child(self.checking_node)
-            node_val = read(self.reading_node)
-            time_interval += 1
+            node_val = read_node(self.reading_node, line, leaf_level)
+            #time_interval += 1
             self.ns_reading.x_mean = (self.ns_reading.x_mean * self.ns_reading.s + node_val) / float(self.ns_reading.s + 1.0)
             self.ns_reading.s += 1.0
 
             # Modify the node count by subtracting the time average count of
             # identified HHH descendants
-            mod_x_mean = subtract_HHH(self.ns_reading)
-            O_func_outcome = O_func(mod_x_mean, self.ns_reading.s, threshold, p_zero, p_zero)
+            mod_x_mean = subtract_hhh(self.ns_reading, HHH_nodes)
+            O_func_outcome = O_func(mod_x_mean, self.ns_reading.s, self.threshold, self.p_zero, self.p_zero, self.xi)
 
-            if O_func_outcome == 2:
+            if O_func_outcome == 0:
+                return "state_three"
+            elif O_func_outcome == 2:
                 # Probably there exisits an HHH under right child
                 # Move to right child
-                self.checking_node = right_child(self.checking_node)
+                self.checking_node = right_child(self.checking_node, self.leaf_level)
                 self.reading_node = self.checking_node
                 self.ns = self.ns_reading
-                return "state_one_nonleaf"
+                return "state_one"
             elif O_func_outcome == 1:
                 # Probably right child not an HHH
                 # Neither left child nor right child an HHH, but current node probably an HHH
-                if p_zero < error:
-                    update_hhh_set(self.checking_node, self.ns)
-                    self.logger.debug("Find an HHH {0} at time interval {1}".format(self.checking_node, time_interval))
+                if self.p_zero < self.error:
+                    update_hhh_set(self.ns, HHH_nodes)
+                    self.logger.debug("Find HHH {0} at time interval {1}".format(self.checking_node, self.time_interval))
 
                     # Reset the pointer to the root node (l,k) = (0,1)
                     self.checking_node = (self.root_level, self.root_index)
                     self.reading_node = self.checking_node
                     self.ns = node_status(self.checking_node, 0)
+                    return "state_one"
                 else:
-                    p_zero /= 2.0
+                    self.p_zero /= 2.0
+                    return "state_one"
             else:
                 self.logger.error("Error: O_func_outcome can only be 1 or 2 after observation loop breaks.")
 
 
-if __name__ == "__main__":
-    rw_cb_algo()
