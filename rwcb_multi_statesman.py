@@ -133,12 +133,14 @@ class rwcb_algo(object):
         # Until one of the equations holds.
         node_val = read_node(self.reading_node, line, leaf_level)
         #time_interval += 1
+        self.logger.debug("At t={0}, node {1} val: {2}".format(self.time_interval, self.reading_node, node_val))
         self.ns.x_mean = (self.ns.x_mean * self.ns.s + node_val) / float(self.ns.s + 1.0)
         self.ns.s += 1.0
 
         # Modify the node count by subtracting the time average count of
         # identified HHH descendants.
         mod_x_mean = subtract_hhh(self.ns, HHH_nodes)
+        self.logger.debug("At t={0}, node {1} val: {2} after subtracting HHH's".format(self.time_interval, self.reading_node, mod_x_mean))
         O_func_outcome = O_func(mod_x_mean, self.ns.s, self.threshold, self.p_zero, self.error, self.xi) 
         
         if O_func_outcome == 0:
@@ -169,13 +171,15 @@ class rwcb_algo(object):
         # Until one of the equation holds
         node_val = read_node(self.reading_node, line, leaf_level)
         #time_interval += 1
+        self.logger.debug("At t={0}, node {1} val: {2}".format(self.time_interval, self.reading_node, node_val))
         self.ns.x_mean = (self.ns.x_mean * self.ns.s + node_val) / float(self.ns.s + 1.0)
         self.ns.s += 1.0
 
         # Modify the node count by subtracting the time average count of
         # identified HHH descendants.
         mod_x_mean = subtract_hhh(self.ns, HHH_nodes)
-        
+        self.logger.debug("At t={0}, node {1} val: {2} after subtracting HHH's".format(self.time_interval, self.reading_node, mod_x_mean))
+
         checking_level = self.checking_node[0]
         if checking_level > self.root_level:
             O_func_outcome = O_func(mod_x_mean, self.ns.s, self.threshold, self.p_zero, self.p_zero, self.xi)
@@ -209,12 +213,15 @@ class rwcb_algo(object):
         # Observe left child until O_func outcome is 1 or 2
         node_val = read_node(self.reading_node, line, leaf_level)
         #time_interval += 1
+        self.logger.debug("At t={0}, node {1} val: {2}".format(self.time_interval, self.reading_node, node_val))
         self.ns_reading.x_mean = (self.ns_reading.x_mean * self.ns_reading.s + node_val) / float(self.ns_reading.s + 1.0)
         self.ns_reading.s += 1.0
 
         # Modify the node count by subtracting the time average count of 
         # identified HHH descendants.
         mod_x_mean = subtract_hhh(self.ns_reading, HHH_nodes)
+        self.logger.debug("At t={0}, node {1} val: {2} after subtracting HHH's".format(self.time_interval, self.reading_node, mod_x_mean))
+
         O_func_outcome = O_func(mod_x_mean, self.ns_reading.s, self.threshold, self.p_zero, self.p_zero, self.xi)
         if O_func_outcome == 0:
             return "state_two" 
@@ -237,12 +244,15 @@ class rwcb_algo(object):
             # Observe right child until O_func outcome is 1 or 2
             node_val = read_node(self.reading_node, line, leaf_level)
             #time_interval += 1
+            self.logger.debug("At t={0}, node {1} val: {2}".format(self.time_interval, self.reading_node, node_val))
             self.ns_reading.x_mean = (self.ns_reading.x_mean * self.ns_reading.s + node_val) / float(self.ns_reading.s + 1.0)
             self.ns_reading.s += 1.0
 
             # Modify the node count by subtracting the time average count of
             # identified HHH descendants
             mod_x_mean = subtract_hhh(self.ns_reading, HHH_nodes)
+            self.logger.debug("At t={0}, node {1} val: {2} after subtracting HHH's".format(self.time_interval, self.reading_node, mod_x_mean))
+
             O_func_outcome = O_func(mod_x_mean, self.ns_reading.s, self.threshold, self.p_zero, self.p_zero, self.xi)
 
             if O_func_outcome == 0:
@@ -267,6 +277,7 @@ class rwcb_algo(object):
                     self.ns = node_status(self.checking_node, 0)
                     return "state_one"
                 else:
+                    self.reading_node = self.checking_node
                     self.p_zero /= 2.0
                     return "state_one"
             else:

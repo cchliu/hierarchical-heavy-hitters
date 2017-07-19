@@ -1,5 +1,5 @@
 from rwcb_multi_statesman import rwcb_algo
-from rwcb_multi_read import read_file
+from rwcb_multi_read import read_file, update_hhh_count
 
 import sys
 import logging
@@ -18,7 +18,7 @@ global time_interval
 global threshold, xi, p_zero, error
 p_init = 1 - 1.0 / (2**(1.0/3.0))
 p_zero = p_init * 0.9
-error = p_init * 0.3
+error = p_init * 0.5
 xi = 6.0
 threshold = 25
 
@@ -77,6 +77,7 @@ def main():
         try:
             line = read_file(ff)
             time_interval += 1
+            update_hhh_count(line, leaf_level, HHH_nodes)
             for idx, ts in enumerate(subts):
                 ts.set_time_interval(time_interval)
                 state = states[idx]
