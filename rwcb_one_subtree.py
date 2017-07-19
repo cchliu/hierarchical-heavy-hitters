@@ -1,5 +1,5 @@
 from rwcb_multi_statesman import rwcb_algo
-from rwcb_multi_read import read_file
+from rwcb_multi_read import read_file, update_hhh_count
 
 import sys
 import logging
@@ -53,6 +53,7 @@ def main():
                 break
             line = read_file(ff)
             time_interval += 1
+            update_hhh_count(line, leaf_level, HHH_nodes)
             ts.set_time_interval(time_interval)
             state = ts.statesman(state, line, leaf_level, HHH_nodes)
             print state
