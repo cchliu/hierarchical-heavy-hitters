@@ -5,7 +5,7 @@ import sys
 import math
 import logging
 LOG = logging.getLogger(__name__)
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 # :param time_interval: the index of current time interval
 # :param file_handler: file object to read traffic data from
 # :param levels: the depth of tree 
@@ -29,7 +29,7 @@ class node_status(object):
         self.x_mean = 0
         self.s = curr_s
 
-# :param HHH_nodes: a list to store HHH's detected
+# :param HHH_nodes: a list to store detected HHH's
 global HHH_nodes
 # key: (l, k), value: :class:`node_status' 
 HHH_nodes = {}
@@ -226,12 +226,14 @@ def rw_cb_algo():
                 while O_func_outcome == 0:
                     node_val = read(reading_node)
                     time_interval += 1
+                    LOG.debug("At t={0}, node {1} val: {2}".format(time_interval, reading_node, node_val)) 
                     ns.x_mean = (ns.x_mean * ns.s + node_val) / float(ns.s + 1.0)
                     ns.s += 1.0
 
                     # Modify the node count by subtracting the time average count of 
                     # identified HHH descendants.
                     mod_x_mean = subtract_HHH(ns) 
+                    LOG.debug("At t={0}, node {1} val: {2} after subtracting HHH's".format(time_interval, reading_node, mod_x_mean))
                     O_func_outcome = O_func(mod_x_mean, ns.s, threshold, p_zero, error)
                     
                 if O_func_outcome == 1:
@@ -251,6 +253,7 @@ def rw_cb_algo():
                     checking_node = (0,1)
                     reading_node = checking_node
                     ns = node_status(checking_node, 0)
+                    continue
                 else:
                     #print "Error: O_func_outcome can only be 1 or 2 after observation loop breaks"
                     LOG.error("Error: O_func_outcome can only be 1 or 2 after observation loop breaks.")
@@ -264,24 +267,28 @@ def rw_cb_algo():
                     while O_func_outcome == 0:
                         node_val = read(reading_node)
                         time_interval += 1
+                        LOG.debug("At t={0}, node {1} val: {2}".format(time_interval, reading_node, node_val))
                         ns.x_mean = (ns.x_mean * ns.s + node_val) / float(ns.s+1.0)
                         ns.s += 1.0
 
                         # Modify the node count by subtracting the time average count of 
                         # identified HHH descendants.
                         mod_x_mean = subtract_HHH(ns)
+                        LOG.debug("At t={0}, node {1} val: {2} after subtracting HHH's".format(time_interval, reading_node, mod_x_mean))
                         O_func_outcome = O_func(mod_x_mean, ns.s, threshold, p_zero, p_zero)
                 elif checking_level == 0:
                     """Root node."""
                     while O_func_outcome == 0:
                         node_val = read(reading_node)
                         time_interval += 1
+                        LOG.debug("At t={0}, node {1} val: {2}".format(time_interval, reading_node, node_val))
                         ns.x_mean = (ns.x_mean * ns.s + node_val) / float(ns.s+1.0)
                         ns.s += 1.0
 
                         # Modify the node count by subtracting the time average count of
                         # identified HHH descendants.
                         mod_x_mean = subtract_HHH(ns)
+                        LOG.debug("At t={0}, node {1} val: {2} after subtracting HHH's".format(time_interval, reading_node, mod_x_mean))
                         O_func_outcome = O_func(mod_x_mean, ns.s, threshold, error, p_zero)
                 else:
                     #print "Error: invalid node level."
@@ -318,12 +325,14 @@ def rw_cb_algo():
                     while O_func_outcome == 0:
                         node_val = read(reading_node)
                         time_interval += 1
+                        LOG.debug("At t={0}, node {1} val: {2}".format(time_interval, reading_node, node_val))
                         ns_reading.x_mean = (ns_reading.x_mean * ns_reading.s + node_val) / float(ns_reading.s+1.0)
                         ns_reading.s += 1.0
 
                         # Modify the node count by subtracting the time average count of 
                         # identified HHH descendants.
                         mod_x_mean = subtract_HHH(ns_reading)
+                        LOG.debug("At t={0}, node {1} val: {2} after subtracting HHH's".format(time_interval, reading_node, mod_x_mean))
                         O_func_outcome = O_func(mod_x_mean, ns_reading.s, threshold, p_zero, p_zero)
 
                     if O_func_outcome == 2:
@@ -342,12 +351,14 @@ def rw_cb_algo():
                         while O_func_outcome == 0:
                             node_val = read(reading_node)
                             time_interval += 1
+                            LOG.debug("At t={0}, node {1} val: {2}".format(time_interval, reading_node, node_val))
                             ns_reading.x_mean = (ns_reading.x_mean * ns_reading.s + node_val) / float(ns_reading.s+1.0)
                             ns_reading.s += 1.0
 
                             # Modify the node count by subtracting the time average count of
                             # identified HHH descendants.
                             mod_x_mean = subtract_HHH(ns_reading)
+                            LOG.debug("At t={0}, node {1} val: {2} after subtracting HHH's".format(time_interval, reading_node, mod_x_mean))
                             O_func_outcome = O_func(mod_x_mean, ns_reading.s, threshold, p_zero, p_zero)
 
                         if O_func_outcome == 2:
@@ -370,8 +381,11 @@ def rw_cb_algo():
                                 checking_node = (0, 1)
                                 reading_node = checking_node
                                 ns = node_status(checking_node, 0)
+                                continue
                             else:
+                                reading_node = checking_node
                                 p_zero /= 2.0
+                                continue
                         else:
                             #print "Error: O_func_outcome can only be 1 or 2 after observation loop breaks"
                             LOG.error("Error: O_func_outcome can only be 1 or 2 after observation loop breaks.")
