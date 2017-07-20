@@ -154,7 +154,7 @@ class rwcb_algo(object):
         elif O_func_outcome == 2:
             # Probably an HHH
             update_hhh_set(self.ns, HHH_nodes)
-            self.logger.debug("Find HHH {0} at time interval {1}".format(self.checking_node, self.time_interval))
+            self.logger.info("Find HHH {0} at time interval {1}".format(self.checking_node, self.time_interval))
             
             # Reset the pointer at the root node of subtree (l,k) = (0, 1)
             self.checking_node = (self.root_level, self.root_index)
@@ -269,7 +269,7 @@ class rwcb_algo(object):
                 # Neither left child nor right child an HHH, but current node probably an HHH
                 if self.p_zero < self.error:
                     update_hhh_set(self.ns, HHH_nodes)
-                    self.logger.debug("Find HHH {0} at time interval {1}".format(self.checking_node, self.time_interval))
+                    self.logger.info("Find HHH {0} at time interval {1}".format(self.checking_node, self.time_interval))
 
                     # Reset the pointer to the root node (l,k) = (0,1)
                     self.checking_node = (self.root_level, self.root_index)

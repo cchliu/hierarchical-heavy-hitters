@@ -43,8 +43,8 @@ def main():
     """Divide into subtrees."""
     # :param N: The number of counters
     # :param S: The number of HHH's
-    N, S = 3, 2
-    M = N -S + 1
+    N, S = 4, 2
+    M = N - S 
     # 2^l0 <= M < 2^(l0+1)
     l0 = int(math.log(M, 2))
     l1 = l0 + 1
@@ -93,6 +93,28 @@ def main():
             next_subts, next_states = [], []
         except EOFError:
             LOG.error("Error: End of file error occurred.")
+
+    # All subtrees finish searching.
+    # Search HHH's in the top level. 
+    root_node = (0, 1)
+    ts = rwcb_algo(threshold, p_zero, error, xi)
+    ts.set_leaf_level(leaf_level)
+    ts.init_start_node(root_node)
+    ts.set_logging_level(logging.DEBUG)
+    state = "state_one"
+
+    while True:
+        try:
+            line = read_file(ff)
+            time_interval += 1
+            update_hhh_count(line, leaf_level, HHH_nodes)
+            ts.set_time_interval(time_interval)
+            if state == "break":
+                break
+            state = ts.statesman(state, line, leaf_level, HHH_nodes)
+        except EOFError:
+            LOG.error("Error: End of file error occurred.")
+
     # Close file
     ff.close()
 
