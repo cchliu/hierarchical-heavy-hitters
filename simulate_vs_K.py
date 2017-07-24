@@ -6,6 +6,7 @@
     :param leaf_level: The depth of the tree.
     :param threshold: HHH threshold in percentage of total traffic count.
 """
+import logging
 import numpy as np
 from rwcb_one_subtree import rwcb_one_subtree
 
@@ -52,7 +53,7 @@ def main():
     for leaf_level in leaf_levels:
         traffic_file = generate_traffic(leaf_level)
         threshold = 7 * 2**leaf_level
-        rwcb_one_subtree(traffic_file, leaf_level, threshold, p_zero, error, xi)
+        rwcb_one_subtree(traffic_file, leaf_level, threshold, p_zero, error, xi, logging.INFO)
 
 
 if __name__ == "__main__":
