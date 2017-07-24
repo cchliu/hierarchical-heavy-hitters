@@ -10,7 +10,7 @@ LOG = logging.getLogger(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 #---------------------------------------------#
 
-def rwcb_one_subtree(infile, leaf_level, threshold, p_zero, error, xi):
+def rwcb_one_subtree(infile, leaf_level, threshold, p_zero, error, xi, logging_level):
     # Read from file
     ff = open(infile, 'rb')
 
@@ -33,13 +33,13 @@ def rwcb_one_subtree(infile, leaf_level, threshold, p_zero, error, xi):
     ts = rwcb_algo(threshold, p_zero, error, xi)
     ts.set_leaf_level(leaf_level)
     ts.init_start_node((0,1))
-    ts.set_logging_level(logging.WARNING)
+    ts.set_logging_level(logging_level)
     state = "state_one" 
      
     while True:
         try:
             if state == "break":
-                LOG.info("leaf_level = {0}, time_interval: {1}".format(leaf_level, time_interval))
+                LOG.info("error = {0}, time_interval: {1}".format(error, time_interval))
                 break
             line = read_file(ff)
             time_interval += 1
