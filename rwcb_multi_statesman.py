@@ -5,6 +5,7 @@
 import sys
 import math
 import logging
+from copy import deepcopy
 
 from rwcb_multi_read import read_node, subtract_hhh, update_hhh_set
 
@@ -16,15 +17,22 @@ class node_status(object):
         self.s = curr_s
 
 
-def O_func(x_mean, s, threshold, p1, p2, xi):
+def O_func(x_mean, s, threshold, p1, p2, xi, logger):
     X_mean = x_mean
     curr_s = float(s)
     # Calculate the equation
-    equation_one = X_mean + math.sqrt(2*xi*math.log(2*xi*curr_s**3/p1)/curr_s)
+    part1 = math.sqrt(2*xi*math.log(2*xi*curr_s**3/p1)/curr_s)
+    equation_one = X_mean + part1
     if equation_one < threshold:
+        logger.debug("X_mean: {0}, part1: {1}, threshold: {2}, return: {3}".format(X_mean, part1, threshold, 1))
+        #print "X_mean: {0}, part1: {1}, threshold: {2}, return: {3}".format(X_mean, part1, threshold, 1)
         return 1
-    equation_two = X_mean - math.sqrt(2*xi*math.log(2*xi*curr_s**3/p2)/curr_s)
+
+    part2 = math.sqrt(2*xi*math.log(2*xi*curr_s**3/p2)/curr_s)
+    equation_two = X_mean - part2
     if equation_two > threshold:
+        logger.debug("X_mean: {0}, part2: {1}, threshold:{2}, return: {3}".format(X_mean, part2, threshold, 2))
+        #print "X_mean: {0}, part2: {1}, threshold: {2}, return: {3}".format(X_mean, part2, threshold, 2)
         return 2
     # Neither equ(1) or equ(2) holds
     return 0
@@ -133,15 +141,16 @@ class rwcb_algo(object):
         # Until one of the equations holds.
         node_val = read_node(self.reading_node, line, leaf_level)
         #time_interval += 1
-        self.logger.debug("At t={0}, node {1} val: {2}".format(self.time_interval, self.reading_node, node_val))
+        self.logger.debug("Stage = {0}: At t={1}, node {2} val: {3}".format(state_tag, self.time_interval, self.reading_node, node_val))
         self.ns.x_mean = (self.ns.x_mean * self.ns.s + node_val) / float(self.ns.s + 1.0)
         self.ns.s += 1.0
+        self.logger.debug("Stage = {0}: At t={1}, node {2}, mean: {3}, sample times: {4}".format(state_tag, self.time_interval, self.reading_node, self.ns.x_mean, self.ns.s))
 
         # Modify the node count by subtracting the time average count of
         # identified HHH descendants.
         mod_x_mean = subtract_hhh(self.ns, HHH_nodes)
-        self.logger.debug("At t={0}, node {1} val: {2} after subtracting HHH's".format(self.time_interval, self.reading_node, mod_x_mean))
-        O_func_outcome = O_func(mod_x_mean, self.ns.s, self.threshold, self.p_zero, self.error, self.xi) 
+        self.logger.debug("Stage = {0}: At t={1}, node {2} val: {3} after subtracting HHH's".format(state_tag, self.time_interval, self.reading_node, mod_x_mean))
+        O_func_outcome = O_func(mod_x_mean, self.ns.s, self.threshold, self.p_zero, self.error, self.xi, self.logger) 
         
         if O_func_outcome == 0:
             return "state_one"
@@ -171,21 +180,22 @@ class rwcb_algo(object):
         # Until one of the equation holds
         node_val = read_node(self.reading_node, line, leaf_level)
         #time_interval += 1
-        self.logger.debug("At t={0}, node {1} val: {2}".format(self.time_interval, self.reading_node, node_val))
+        self.logger.debug("Stage = {0}: At t={1}, node {2} val: {3}".format(state_tag, self.time_interval, self.reading_node, node_val))
         self.ns.x_mean = (self.ns.x_mean * self.ns.s + node_val) / float(self.ns.s + 1.0)
         self.ns.s += 1.0
+        self.logger.debug("Stage = {0}: At t={1}, node {2}, mean: {3}, sample times: {4}".format(state_tag, self.time_interval, self.reading_node, self.ns.x_mean, self.ns.s))
 
         # Modify the node count by subtracting the time average count of
         # identified HHH descendants.
         mod_x_mean = subtract_hhh(self.ns, HHH_nodes)
-        self.logger.debug("At t={0}, node {1} val: {2} after subtracting HHH's".format(self.time_interval, self.reading_node, mod_x_mean))
+        self.logger.debug("Stage = {0}: At t={1}, node {2} val: {3} after subtracting HHH's".format(state_tag, self.time_interval, self.reading_node, mod_x_mean))
 
         checking_level = self.checking_node[0]
         if checking_level > self.root_level:
-            O_func_outcome = O_func(mod_x_mean, self.ns.s, self.threshold, self.p_zero, self.p_zero, self.xi)
+            O_func_outcome = O_func(mod_x_mean, self.ns.s, self.threshold, self.p_zero, self.p_zero, self.xi, self.logger)
         elif checking_level == self.root_level:
             """Root node."""
-            O_func_outcome = O_func(mod_x_mean, self.ns.s, self.threshold, self.error, self.p_zero, self.xi)
+            O_func_outcome = O_func(mod_x_mean, self.ns.s, self.threshold, self.error, self.p_zero, self.xi, self.logger)
         else:
             self.logger.error("Error: invalid node level.")
 
@@ -210,24 +220,26 @@ class rwcb_algo(object):
             return "state_two"
 
     def state_two(self, line, leaf_level, HHH_nodes):
+        state_tag = "state_two"
         # Observe left child until O_func outcome is 1 or 2
         node_val = read_node(self.reading_node, line, leaf_level)
         #time_interval += 1
-        self.logger.debug("At t={0}, node {1} val: {2}".format(self.time_interval, self.reading_node, node_val))
+        self.logger.debug("Stage = {0}: At t={1}, node {2} val: {3}".format(state_tag, self.time_interval, self.reading_node, node_val))
         self.ns_reading.x_mean = (self.ns_reading.x_mean * self.ns_reading.s + node_val) / float(self.ns_reading.s + 1.0)
         self.ns_reading.s += 1.0
+        self.logger.debug("Stage = {0}: At t={1}, node {2}, mean: {3}, sample times: {4}".format(state_tag, self.time_interval, self.reading_node, self.ns_reading.x_mean, self.ns_reading.s))
 
         # Modify the node count by subtracting the time average count of 
         # identified HHH descendants.
         mod_x_mean = subtract_hhh(self.ns_reading, HHH_nodes)
-        self.logger.debug("At t={0}, node {1} val: {2} after subtracting HHH's".format(self.time_interval, self.reading_node, mod_x_mean))
+        self.logger.debug("Stage = {0}: At t={1}, node {2} val: {3} after subtracting HHH's".format(state_tag, self.time_interval, self.reading_node, mod_x_mean))
 
-        O_func_outcome = O_func(mod_x_mean, self.ns_reading.s, self.threshold, self.p_zero, self.p_zero, self.xi)
+        O_func_outcome = O_func(mod_x_mean, self.ns_reading.s, self.threshold, self.p_zero, self.p_zero, self.xi, self.logger)
         if O_func_outcome == 0:
             return "state_two" 
         elif O_func_outcome == 2:
             # Probably there exisits an HHH under this left child
-            # Move the left child
+            # Move to the left child
             self.checking_node = left_child(self.checking_node, self.leaf_level)
             self.reading_node = self.checking_node
             self.ns = self.ns_reading
@@ -240,20 +252,21 @@ class rwcb_algo(object):
             return "state_three"
 
     def state_three(self, line, leaf_level, HHH_nodes):
+            state_tag = "state_three"
             # Probably left child not an HHH
             # Observe right child until O_func outcome is 1 or 2
             node_val = read_node(self.reading_node, line, leaf_level)
             #time_interval += 1
-            self.logger.debug("At t={0}, node {1} val: {2}".format(self.time_interval, self.reading_node, node_val))
+            self.logger.debug("Stage = {0}: At t={1}, node {2} val: {3}".format(state_tag, self.time_interval, self.reading_node, node_val))
             self.ns_reading.x_mean = (self.ns_reading.x_mean * self.ns_reading.s + node_val) / float(self.ns_reading.s + 1.0)
             self.ns_reading.s += 1.0
-
+            self.logger.debug("Stage = {0}: At t={1}, node {2}, mean: {3}, sample times: {4}".format(state_tag, self.time_interval, self.reading_node, self.ns_reading.x_mean, self.ns_reading.s))
             # Modify the node count by subtracting the time average count of
             # identified HHH descendants
             mod_x_mean = subtract_hhh(self.ns_reading, HHH_nodes)
-            self.logger.debug("At t={0}, node {1} val: {2} after subtracting HHH's".format(self.time_interval, self.reading_node, mod_x_mean))
+            self.logger.debug("Stage = {0}: At t={1}, node {2} val: {3} after subtracting HHH's".format(state_tag, self.time_interval, self.reading_node, mod_x_mean))
 
-            O_func_outcome = O_func(mod_x_mean, self.ns_reading.s, self.threshold, self.p_zero, self.p_zero, self.xi)
+            O_func_outcome = O_func(mod_x_mean, self.ns_reading.s, self.threshold, self.p_zero, self.p_zero, self.xi, self.logger)
 
             if O_func_outcome == 0:
                 return "state_three"
@@ -272,13 +285,17 @@ class rwcb_algo(object):
                     self.logger.info("Find HHH {0} at time interval {1}".format(self.checking_node, self.time_interval))
 
                     # Reset the pointer to the root node (l,k) = (0,1)
-                    self.checking_node = (self.root_level, self.root_index)
+                    if self.checking_node != (self.root_level, self.root_index):
+                        self.checking_node = (self.root_level, self.root_index)
+                        self.ns = node_status(self.checking_node, 0)
+                    else:
+                        self.ns = deepcopy(self.ns)
                     self.reading_node = self.checking_node
-                    self.ns = node_status(self.checking_node, 0)
                     return "state_one"
                 else:
                     self.reading_node = self.checking_node
                     self.p_zero /= 2.0
+                    self.logger.debug("At t={0}, checking node {1}, p_zero: {2}".format(self.time_interval, self.checking_node, self.p_zero))
                     return "state_one"
             else:
                 self.logger.error("Error: O_func_outcome can only be 1 or 2 after observation loop breaks.")

@@ -75,9 +75,7 @@ def findHHH(root, threshold):
                 HHH_nodes.append(node.tag)
                 #print "t = {0}, node {1} is an HHH".format(counter, node.tag)
         curr_nodes = next_nodes
-    output = ["node {0}".format(node_tag) for node_tag in HHH_nodes]
-    outstr = ','.join(output)
-    print "t = {0}, ".format(counter) + outstr + " are HHH's"
+    return HHH_nodes
 
 def clearTree(root):
     curr_nodes = [root]
@@ -107,7 +105,7 @@ def main():
     # Create a binary tree
     levels = 4
     root, leaf_nodes = createTree(levels)
-    threshold = 25
+    threshold = 7 * 2**(levels)
     
     # Clear tree
     clearTree(root)
@@ -116,6 +114,7 @@ def main():
     # Read traffic data
     infile = "traffic.txt"
     infile = "traffic_twoHHH.txt"
+    infile = "traffic_tmp.txt"
     global counter
     counter = 0 
     with open(infile, 'rb') as ff:
@@ -125,7 +124,10 @@ def main():
             line = [int(k) for k in line]
             if counter < 50:
                 fillTree(leaf_nodes, line, threshold)
-                findHHH(root, threshold)
+                HHH_nodes = findHHH(root, threshold)
+                output = ["node {0}".format(node_tag) for node_tag in HHH_nodes]
+                outstr = ','.join(output)
+                print "t={0}, ".format(counter) + outstr + " are HHH's"
                 clearTree(root)
     
 
