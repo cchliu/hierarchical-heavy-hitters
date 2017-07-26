@@ -63,7 +63,7 @@ def main():
     xi = 1.0
     threshold = 25
 
-    rwcb_one_subtree(infile, leaf_level, threshold, p_zero, error, xi)
+    rwcb_one_subtree(infile, leaf_level, threshold, p_zero, error, xi, logging.DEBUG)
 
 
 if __name__ == "__main__":
