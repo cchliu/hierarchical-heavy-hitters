@@ -2,10 +2,11 @@ import sys
 import logging
 import math
 import os,sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+module_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'module')
+sys.path.append(module_path)
 
 from rwcb_multi_hhh import update_hhh_count
-from read_file import read_file
+from read_file import read_file_old
 from rwcb_multi_statesman import rwcb_algo
 #---------------------------------------------#
 # logging
@@ -36,6 +37,7 @@ def rwcb_one_subtree(infile, leaf_level, threshold, p_zero, error, xi, logging_l
     ts = rwcb_algo(threshold, p_zero, error, xi)
     ts.set_leaf_level(leaf_level)
     ts.init_start_node((0,1))
+    ts.set_scale_const(1)
     ts.set_logging_level(logging_level)
     state = "state_one" 
      
@@ -44,7 +46,7 @@ def rwcb_one_subtree(infile, leaf_level, threshold, p_zero, error, xi, logging_l
             if state == "break":
                 LOG.info("error = {0}, time_interval: {1}".format(error, time_interval))
                 break
-            line = read_file(ff, leaf_level)
+            line = read_file_old(ff, leaf_level)
             time_interval += 1
             update_hhh_count(line, HHH_nodes)
             ts.set_time_interval(time_interval)

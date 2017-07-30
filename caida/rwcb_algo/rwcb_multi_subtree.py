@@ -2,10 +2,11 @@ import sys
 import logging
 import math
 import os,sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+module_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'module')
+sys.path.append(module_path)
 
 from rwcb_multi_hhh import update_hhh_count
-from read_file import read_file
+from read_file import read_file_old
 from parallel_rwcb import parallel_rwcb_algo
 from offline_caida import createTree, findHHH
 #---------------------------------------------#
@@ -37,7 +38,7 @@ def main():
     ff = open(infile, 'rb')
     while True:
         try:
-            line = read_file(ff, leaf_level)
+            line = read_file_old(ff, leaf_level)
             flag = pts.run(line) 
             if flag:
                 break
