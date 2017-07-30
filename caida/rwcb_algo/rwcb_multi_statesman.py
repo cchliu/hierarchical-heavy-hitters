@@ -36,18 +36,21 @@ def O_func(x_mean, s, threshold, p1, p2, xi, logger):
     # Calculate the equation
     part1 = math.sqrt(2*xi*math.log(2*curr_s**3/p1)/curr_s)
     equation_one = X_mean + part1
+    logger.debug("X_mean: {0}, part1: {1}, threshold: {2}".format(X_mean, part1, threshold))
     if equation_one < threshold:
-        logger.debug("X_mean: {0}, part1: {1}, threshold: {2}, return: {3}".format(X_mean, part1, threshold, 1))
+        logger.debug("Satisfy equation (31), return 1")
         #print "X_mean: {0}, part1: {1}, threshold: {2}, return: {3}".format(X_mean, part1, threshold, 1)
         return 1
 
     part2 = math.sqrt(2*xi*math.log(2*curr_s**3/p2)/curr_s)
     equation_two = X_mean - part2
+    logger.debug("X_mean: {0}, part2: {1}, threshold: {2}".format(X_mean, part2, threshold))
     if equation_two > threshold:
-        logger.debug("X_mean: {0}, part2: {1}, threshold:{2}, return: {3}".format(X_mean, part2, threshold, 2))
+        logger.debug("Satisfy equation (32), return 2")
         #print "X_mean: {0}, part2: {1}, threshold: {2}, return: {3}".format(X_mean, part2, threshold, 2)
         return 2
     # Neither equ(1) or equ(2) holds
+    logger.debug("Satisfy neither equations, return 0")
     return 0
 
 

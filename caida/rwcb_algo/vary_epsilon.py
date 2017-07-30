@@ -18,8 +18,8 @@ from parallel_rwcb import parallel_rwcb_algo
 
 def run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, logging_level):
     # One realization under the above distribution.
-    outfile = "tmp_vary_epsilon.txt"
-    iterations = 5000
+    outfile = "tmp_vary_epsilon_{0}.txt".format(S)
+    iterations = 1000
     generator_file(leaf_lambdas, iterations, outfile)
     
     # Run RWCB algorithm.
@@ -52,6 +52,8 @@ def vary_error(leaf_level, error, iterations):
     root, tree = createTree(leaf_lambdas, threshold)
     tHHH_nodes = findHHH(root, threshold)
     print "True HHHes: ", tHHH_nodes
+    S = len(tHHH_nodes)
+    print "No. of HHHes: {0}".format(S)
 
     # rw_cb algorithm specific parameters
     # :param threshold: HHH threshold
@@ -62,7 +64,6 @@ def vary_error(leaf_level, error, iterations):
     #error = p_init * 0.5
     xi = 6.0
 
-    S = 10
     for i in range(iterations):
         run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, logging.WARNING)
 
@@ -79,7 +80,7 @@ def main():
     errors = [1.0/float(math.exp(i)) for i in reci_errors]
 
     leaf_level = 16
-    iterations = 100
+    iterations = 1000
     for error in errors:
         vary_error(leaf_level, error, iterations) 
 

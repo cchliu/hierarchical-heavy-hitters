@@ -19,7 +19,7 @@ from parallel_rwcb import parallel_rwcb_algo
 
 def run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, logging_level):
     # One realization under the above distribution.
-    iterations = 2000
+    iterations = 10000
     #traffic = generator_chunk(leaf_lambdas, iterations)
     
     # Run RWCB algorithm.
@@ -30,18 +30,19 @@ def run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, l
         flag = pts.run(leaf_nodes)
         if flag:
             rHHH_nodes = pts.HHH_nodes.keys()
-            #print "reported HHHes: ", rHHH_nodes
+            print "reported HHHes: ", rHHH_nodes
             time_interval = pts.time_interval
             # Calculate precision and recall
             p = precision(rHHH_nodes, tHHH_nodes)
             r = recall(rHHH_nodes, tHHH_nodes)
             line = "At leaf_level = {0}, error = {1}, at time = {2}, stop the search. precision: {3}, recall: {4}".format(leaf_level, error, time_interval, p, r)
-            return line
+            print line
+            return 
 
     error_msg = "Error: End of file error occurred."
-    return error_msg
+    print error_msg
 
-def monte_carlo(leaf_level, iterations, threshold, p_zero, error, xi):
+def monte_carlo(leaf_level, iterations):
     # Load synthetic trace parameters
     #leaf_level = 16
     infile = "../data/equinix-chicago.dirA.20160406-140200.UTC.anon.agg.l{0}.csv".format(leaf_level)
@@ -57,48 +58,47 @@ def monte_carlo(leaf_level, iterations, threshold, p_zero, error, xi):
     sorted_leaf_lambdas = sorted(leaf_lambdas, key = lambda x:x[1], reverse=True)
     print sorted_leaf_lambdas[:50]
     total = sum([k[1] for k in leaf_lambdas])
+    threshold = 200
     #threshold = total * 0.1
 
     # Find true universal set of HHHes
     root, tree = createTree(leaf_lambdas, threshold)
     tHHH_nodes = findHHH(root, threshold)
     S = len(tHHH_nodes)
-    
-    results = [] 
     line = "True HHHes: {0}, {1}".format(S, tHHH_nodes)
-    results.append(line)
-    for i in range(iterations):
-        line = run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, logging.WARNING)
-        results.append(line)
-   
-    # Write combined results to logfile
-    with open(logfile, 'wb') as ff:
-        for line in results:
-            ff.write(line+'\n')
- 
-     
-def main(): 
-    #-------------------------------------------------#
-    # :param leaf_level: Leaf level = log(K), K is number of leaf nodes
+    print line
+    
+    # rw_cb algorithm specific parameters
     # :param threshold: HHH threshold
-    # :param xi: parameter in equation (31) or (32)
+    # :param epsno: parameter in equation (31) or (32)
     # :param p_zero: initialize p_zero
-    # :param error: Error
-    # :param iterations: Num of monte carlo runs
-    leaf_level = 8
-    threshold = 200
     p_init = 1 - 1.0 / (2**(1.0/3.0))
     p_zero = p_init * 0.9
     error = 0.1
     xi = 48.0
-    iterations = 200
+    #xi = 600000
+    #xi = 6.0
 
+    for i in range(iterations):
+        results = run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, logging.WARNING)
+
+
+def main(): 
+    for leaf_level in range(8, 9):
+        start_time = time.time()
+        print "leaf_level = {0}".format(leaf_level)
+        monte_carlo(leaf_level, 1)
+        end_time = time.time()
+        print "Time elapsed: ", end_time - start_time
+    
+    """
+    leaf_level = 8
     start_time = time.time()
     print "leaf_level = {0}".format(leaf_level)
-    monte_carlo(leaf_level, iterations, threshold, p_zero, error, xi)
+    monte_carlo(leaf_level, 1)
     end_time = time.time()
     print "Time elapsed: ", end_time - start_time
-    
+    """
 
 if __name__ == "__main__":
     main() 
