@@ -1,6 +1,13 @@
 """Capsulate rw_cb algorithm into a class.
 
-    Run the algo like a state machine. 
+    Run the algo like a state machine.
+
+    Usage:
+        ts = rwcb_algo(threshold, error, p_zero, xi)
+        ts.set_leaf_level(leaf_level)
+        ts.init_start_node(root_node)
+        ts.set_scale_const(S)
+
 """
 import os
 import sys
@@ -52,13 +59,17 @@ class rwcb_algo(object):
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
         # :param p_zero: initialize p_zero
+        # :param p_fix: p_fix won't change over iteration.
         # :param threshold: HHH threshold
         # :param error
         # :param xi: parameter in equation (31) or (32)
+        # :param scale: error/scale compared with p_zero when declaring targets
         self.p_zero = p_zero
+        self.p_fix = p_zero
         self.threshold = threshold
         self.error = error
         self.xi = xi
+        self.scale_const = 1.0
 
         # :param time_interval: The index of current time interval.
         self.time_interval = 0
@@ -72,6 +83,12 @@ class rwcb_algo(object):
         self.checking_node = (0,1)
         self.ns = node_status(self.checking_node, 0)
         self.ns_reading = node_status(self.reading_node, 0)
+
+    def set_scale_const(self, S):
+        # S: number of true HHHes in the whole tree.
+        L = self.leaf_level - self.root_level
+        C_p0_H = 1.0/float((1-math.exp(-1*2*(1-2*(1-self.p_fix)**3)**2))**2)
+        self.scale_const = 3*L*C_p0_H*S
 
     def _set_root_node(self, root_node):
         root_level, root_index = root_node
@@ -137,9 +154,11 @@ class rwcb_algo(object):
             return "state_one"
         elif O_func_outcome == 1:
             # Probably not an HHH, zoom out to parent node
+            # Everytime move to a new node, reset p0 to p_fix
             self.checking_node = parent(self.checking_node, self.root_level)
             self.reading_node = self.checking_node          
             self.ns = node_status(self.checking_node, 0)
+            self.p_zero = self.p_fix
             return "state_one"
         elif O_func_outcome == 2:
             # Probably an HHH
@@ -147,9 +166,11 @@ class rwcb_algo(object):
             self.logger.info("Find HHH {0} at time interval {1}".format(self.checking_node, self.time_interval))
             
             # Reset the pointer at the root node of subtree (l,k) = (0, 1)
+            # Everytime move to a new node, reset p0 to p_fix
             self.checking_node = (self.root_level, self.root_index)
             self.reading_node = self.checking_node
             self.ns = node_status(self.checking_node, 0)
+            self.p_zero = self.p_fix
             return "state_one"
         else:
             self.logger.error("Error: O_func_outcome can only be 1 or 2 after observation loop breaks.")            
@@ -189,9 +210,11 @@ class rwcb_algo(object):
                 return "break"
         if O_func_outcome == 1:
             # Probably not an HHH, zoom out to parent node
+            # Everytime move to a new node, reset p0 to p_fix
             self.checking_node = parent(self.checking_node, self.root_level)
             self.reading_node = self.checking_node
             self.ns = node_status(self.checking_node, 0)
+            self.p_zero = self.p_fix
             return "state_one"
         elif O_func_outcome == 2:
             # Probably there exists an HHH under this prefix, zoom in
@@ -221,9 +244,11 @@ class rwcb_algo(object):
         elif O_func_outcome == 2:
             # Probably there exisits an HHH under this left child
             # Move to the left child
+            # Everytime move to a new node, reset p0 to p_fix
             self.checking_node = left_child(self.checking_node, self.leaf_level)
             self.reading_node = self.checking_node
             self.ns = self.ns_reading
+            self.p_zero = self.p_fix
             return "state_one"
         elif O_func_outcome == 1:
             # Probably left child not an HHH
@@ -254,24 +279,28 @@ class rwcb_algo(object):
             elif O_func_outcome == 2:
                 # Probably there exisits an HHH under right child
                 # Move to right child
+                # Everytime move to a new node, reset p0 to p_fix
                 self.checking_node = right_child(self.checking_node, self.leaf_level)
                 self.reading_node = self.checking_node
                 self.ns = self.ns_reading
+                self.p_zero = self.p_fix 
                 return "state_one"
             elif O_func_outcome == 1:
                 # Probably right child not an HHH
                 # Neither left child nor right child an HHH, but current node probably an HHH
-                if self.p_zero < self.error:
+                if self.p_zero < self.error/float(self.scale_const):
                     update_hhh_set(self.ns, HHH_nodes)
                     self.logger.info("Find HHH {0} at time interval {1}".format(self.checking_node, self.time_interval))
 
                     # Reset the pointer to the root node (l,k) = (0,1)
+                    # Everytime move to a new node, reset p0 to p_fix
                     if self.checking_node != (self.root_level, self.root_index):
                         self.checking_node = (self.root_level, self.root_index)
                         self.ns = node_status(self.checking_node, 0)
                     else:
                         self.ns = deepcopy(self.ns)
                     self.reading_node = self.checking_node
+                    self.p_zero = self.p_fix
                     return "state_one"
                 else:
                     self.reading_node = self.checking_node
