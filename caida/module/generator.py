@@ -14,6 +14,23 @@ def generator(leaf_lambdas):
         traffic.append([(l,k), val])
     return traffic        
 
+def generator_chunk(leaf_lambdas, iterations):
+    """
+        :param leaf_lambdas: A list of leaf lambdas with (l,k) and lambda.
+    """
+    traffic = []
+    for (l,k), leaf_lambda in leaf_lambdas:
+        val = np.random.poisson(leaf_lambda, iterations)
+        traffic.append(val)
+
+    # Reshape traffic into a list of leaf_nodes:[ [(l,k), count]...]
+    new_traffic = []
+    for i in range(iterations):
+        counts = [k[i] for k in traffic]
+        leaf_nodes = [[pair[0], counts[idx]] for idx, pair in enumerate(leaf_lambdas)]
+        new_traffic.append(leaf_nodes)
+    return new_traffic
+
 def generator_file(leaf_lambdas, iterations, outfile):
     """ 
         :param leaf_lambdas: A list of leaf lambdas with (l,k) and lambda.
