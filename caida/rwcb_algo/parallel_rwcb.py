@@ -146,16 +146,20 @@ class parallel_rwcb_algo(object):
         return 0
 
     def report(self, tHHH_nodes):
+        results = []
         rHHH_nodes = self.HHH_nodes.keys()
         rHHH_nodes = sorted(rHHH_nodes, key = lambda x:x[0])
-        print "reported HHHes: ", rHHH_nodes
-        #logger.info("reported HHHes: {0}".format(rHHH_nodes))
- 
+        #print "reported HHHes: ", rHHH_nodes
+        line = "reported HHHes: {0}".format(rHHH_nodes)
+        results.append(line)
+    
         # Calculate precision and recall
         p = precision(rHHH_nodes, tHHH_nodes)
         r = recall(rHHH_nodes, tHHH_nodes)
-        print "At leaf_level = {0}, error = {1}, at time = {2}, stop the search. precision: {3}, recall: {4}".format(self.leaf_level, self.error, self.time_interval, p, r)
-        #logger.info("At time = {0}, stop the search. precision: {1}, recall: {2}".format(self.time_interval, p, r))
+        #print "At leaf_level = {0}, error = {1}, at time = {2}, stop the search. precision: {3}, recall: {4}".format(self.leaf_level, self.error, self.time_interval, p, r)
+        line = "At leaf_level = {0}, error = {1}, at time = {2}, stop the search. precision: {3}, recall: {4}".format(self.leaf_level, self.error, self.time_interval, p, r)
+        results.append(line)
+        return results
      
 
 if __name__ == "__main__":
