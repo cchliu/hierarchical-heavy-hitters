@@ -27,14 +27,14 @@ def O_func(x_mean, s, threshold, p1, p2, xi, logger):
     X_mean = x_mean
     curr_s = float(s)
     # Calculate the equation
-    part1 = math.sqrt(2*xi*math.log(2*xi*curr_s**3/p1)/curr_s)
+    part1 = math.sqrt(2*xi*math.log(2*curr_s**3/p1)/curr_s)
     equation_one = X_mean + part1
     if equation_one < threshold:
         logger.debug("X_mean: {0}, part1: {1}, threshold: {2}, return: {3}".format(X_mean, part1, threshold, 1))
         #print "X_mean: {0}, part1: {1}, threshold: {2}, return: {3}".format(X_mean, part1, threshold, 1)
         return 1
 
-    part2 = math.sqrt(2*xi*math.log(2*xi*curr_s**3/p2)/curr_s)
+    part2 = math.sqrt(2*xi*math.log(2*curr_s**3/p2)/curr_s)
     equation_two = X_mean - part2
     if equation_two > threshold:
         logger.debug("X_mean: {0}, part2: {1}, threshold:{2}, return: {3}".format(X_mean, part2, threshold, 2))
