@@ -10,7 +10,7 @@ module_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 sys.path.append(module_path)
 
 from load_lambdas import load_lambdas
-from generator import generator, generator_file
+from generator import generator, generator_file, generator_chunk
 from read_file import read_file
 from offline_caida import createTree, findHHH
 
@@ -19,7 +19,7 @@ from parallel_rwcb import parallel_rwcb_algo
 def run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, logging_level):
     # One realization under the above distribution.
     outfile = "tmp_vary_k.txt"
-    iterations = 1000
+    iterations = 5000
     generator_file(leaf_lambdas, iterations, outfile)
     
     # Run RWCB algorithm.
@@ -30,22 +30,25 @@ def run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, l
             line = read_file(ff, leaf_lambdas)
             flag = pts.run(line)
             if flag:
-                pts.report(tHHH_nodes)
+                results = pts.report(tHHH_nodes)
                 break
         except EOFError:
             print "Error: End of file error occurred."
+            error_msg = "Error: End of file error occurred"
+            results = [error_msg]
             break
 
     # Close file
     ff.close()
+    return results
 
 def monte_carlo(leaf_level, iterations):
     # Load synthetic trace parameters
     #leaf_level = 16
     infile = "../data/equinix-chicago.dirA.20160406-140200.UTC.anon.agg.l{0}.csv".format(leaf_level)
 
-    # logger
-    #logfile = "results/level_{0}.txt".format(leaf_level)
+    # log file
+    logfile = "results/tmp/vary_k_l{0}.txt".format(leaf_level)
     #LOG = logging.getLogger(__name__)
     #handler = logging.FileHandler(logfile)
     #handler.setLevel(logging.INFO)
@@ -58,28 +61,28 @@ def monte_carlo(leaf_level, iterations):
     # Find true universal set of HHHes
     root, tree = createTree(leaf_lambdas, threshold)
     tHHH_nodes = findHHH(root, threshold)
+    S = len(tHHH_nodes)
     print "True HHHes: {0}".format(tHHH_nodes)
-    #LOG.info("True HHHes: {0}".format(tHHH_nodes))
-
+    
     # rw_cb algorithm specific parameters
     # :param threshold: HHH threshold
     # :param epsno: parameter in equation (31) or (32)
     # :param p_zero: initialize p_zero
     p_init = 1 - 1.0 / (2**(1.0/3.0))
-    p_zero = p_init * 0.9
-    error = p_init * 0.5
+    p_zero = p_init * 0.5
+    error = 0.1
     xi = 6.0
 
-    S = 10
     for i in range(iterations): 
-        run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, logging.WARNING) 
+        results = run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, logging.WARNING)
+        print results
     #LOG.removeHandler(handler)    
 
 
 def main():
     for leaf_level in range(16, 7, -1):
         print "leaf_level = {0}".format(leaf_level)
-        monte_carlo(leaf_level, 1000)
+        monte_carlo(leaf_level, 1)
 
  
 if __name__ == "__main__":

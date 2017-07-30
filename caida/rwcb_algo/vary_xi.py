@@ -30,7 +30,7 @@ def run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, l
             line = read_file(ff, leaf_lambdas)
             flag = pts.run(line)
             if flag:
-                pts.report(tHHH_nodes)
+                print pts.report(tHHH_nodes)
                 break
         except EOFError:
             print "Error: End of file error occurred."
@@ -52,6 +52,7 @@ def vary_xi(leaf_level):
     root, tree = createTree(leaf_lambdas, threshold)
     tHHH_nodes = findHHH(root, threshold)
     print "True HHHes: ", tHHH_nodes
+    S = len(tHHH_nodes)
 
     # rw_cb algorithm specific parameters
     # :param threshold: HHH threshold
@@ -62,7 +63,6 @@ def vary_xi(leaf_level):
     error = p_init * 0.5
     xi = 6.0
 
-    S = 10
     for xi in [0.1, 1.0, 5.0, 10.0, 50.0, 100.0, 200.0]:
         print "xi = {0}".format(xi)
         run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, logging.WARNING)

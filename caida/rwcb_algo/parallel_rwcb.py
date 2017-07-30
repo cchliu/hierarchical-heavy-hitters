@@ -74,7 +74,7 @@ class parallel_rwcb_algo(object):
         """Divide into subtrees."""
         # :param N: The number of counters
         # :param S: The number of HHH's
-        S  = self.S
+        S = self.S
         N = self.N
         M = N - S
         # 2^l0 <= M < 2^(l0+1)
@@ -98,6 +98,7 @@ class parallel_rwcb_algo(object):
             ts = rwcb_algo(self.threshold, self.p_zero, self.error, self.xi)
             ts.set_leaf_level(self.leaf_level)
             ts.init_start_node(root_node)
+            ts.set_scale_const(self.S)
             ts.set_logging_level(self.logging_level)
             subts.append(ts)
             states.append("state_one")
@@ -111,6 +112,7 @@ class parallel_rwcb_algo(object):
         ts = rwcb_algo(self.threshold, self.p_zero, self.error, self.xi)
         ts.set_leaf_level(self.leaf_level)
         ts.init_start_node(root_node)
+        ts.set_scale_const(self.S)
         ts.set_logging_level(self.logging_level)
         self.topts = ts
         self.top_state = "state_one"
