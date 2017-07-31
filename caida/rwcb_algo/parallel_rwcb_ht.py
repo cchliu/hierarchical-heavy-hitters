@@ -24,19 +24,20 @@ import logging
 module_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'module')
 sys.path.append(module_path)
 
-from rwcb_multi_statesman import rwcb_algo
+from rwcb_multi_statesman_ht import rwcb_algo
 from rwcb_multi_hhh import update_hhh_count
 from metric import precision, recall
 
 class parallel_rwcb_algo(object):
-    def __init__(self, leaf_level, threshold, p_zero, error, xi, S, logging_level):
+    def __init__(self, leaf_level, threshold, p_zero, error, b, u, S, logging_level):
         """
             :param leaf_lambdas: distribution parameters to generate synthetic traces.
                 - A list of [(l,k), val]
             :param leaf_level: Leaf level.
 
             :param threshold: HHH threshold.
-            :param xi: parameter in equation (31) and (32).
+            :param b: parameter in equation (31) and (32).
+            :param u: parameter in equation (31) and (32)
             :param p_zero: initial p_zero.
 
             :param S: The number of HHH's.
@@ -46,7 +47,8 @@ class parallel_rwcb_algo(object):
         self.leaf_level = leaf_level
  
         self.threshold = threshold
-        self.xi = xi
+        self.b = b
+        self.u = u
         self.error = error
         self.p_zero = p_zero
        
@@ -95,7 +97,7 @@ class parallel_rwcb_algo(object):
                 root_node = (l1, n0+i+1)
 
             # Instantiate subtree search object
-            ts = rwcb_algo(self.threshold, self.p_zero, self.error, self.xi)
+            ts = rwcb_algo(self.threshold, self.p_zero, self.error, self.b, self.u)
             ts.set_leaf_level(self.leaf_level)
             ts.init_start_node(root_node)
             ts.set_scale_const(self.S)
@@ -109,7 +111,7 @@ class parallel_rwcb_algo(object):
     def create_topts(self):
         # Search HHHes at the top level.
         root_node = (0,1)
-        ts = rwcb_algo(self.threshold, self.p_zero, self.error, self.xi)
+        ts = rwcb_algo(self.threshold, self.p_zero, self.error, self.b, self.u)
         ts.set_leaf_level(self.leaf_level)
         ts.init_start_node(root_node)
         ts.set_scale_const(self.S)

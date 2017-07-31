@@ -19,7 +19,7 @@ from parallel_rwcb import parallel_rwcb_algo
 
 def run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, logging_level):
     # One realization under the above distribution.
-    iterations = 10000
+    iterations = 2000
     #traffic = generator_chunk(leaf_lambdas, iterations)
     
     # Run RWCB algorithm.
@@ -30,19 +30,18 @@ def run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, l
         flag = pts.run(leaf_nodes)
         if flag:
             rHHH_nodes = pts.HHH_nodes.keys()
-            print "reported HHHes: ", rHHH_nodes
+            #print "reported HHHes: ", rHHH_nodes
             time_interval = pts.time_interval
             # Calculate precision and recall
             p = precision(rHHH_nodes, tHHH_nodes)
             r = recall(rHHH_nodes, tHHH_nodes)
             line = "At leaf_level = {0}, error = {1}, xi = {2}, at time = {3}, stop the search. precision: {4}, recall: {5}".format(leaf_level, error, xi, time_interval, p, r)
-            print line
-            return 
+            return line
 
     error_msg = "Error: End of file error occurred."
-    print error_msg
+    return error_msg
 
-def monte_carlo(leaf_level, iterations, threshold, p_zero, error, xi):
+def monte_carlo(leaf_level, iterations, num_of_threads, threshold, p_zero, error, xi):
     # Load synthetic trace parameters
     #leaf_level = 16
     infile = "../data/equinix-chicago.dirA.20160406-140200.UTC.anon.agg.l{0}.csv".format(leaf_level)
@@ -64,44 +63,68 @@ def monte_carlo(leaf_level, iterations, threshold, p_zero, error, xi):
     root, tree = createTree(leaf_lambdas, threshold)
     tHHH_nodes = findHHH(root, threshold)
     S = len(tHHH_nodes)
+    
+    combine_results = [] 
     line = "True HHHes: {0}, {1}".format(S, tHHH_nodes)
-    print line
+    combine_results.append(line)
+    #for i in range(iterations):
+    #    line = run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, logging.WARNING)
+    #    results.append(line)
 
-    for i in range(iterations):
-        results = run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, logging.WARNING)
+    #---------------------------------------------------#
+    import multiprocessing
 
+    def worker(i, chunk, queue, leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, logging_level):
+        results = []
+        for i in range(chunk):
+            line = run(leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, logging_level)
+            results.append(line)
+        queue.put(results)
 
+    jobs = []
+    result_queue = multiprocessing.Queue()
+    chunk = int(math.ceil(iterations/num_of_threads))
+    for i in range(num_of_threads):
+        p = multiprocessing.Process(target=worker, args=(i, chunk, result_queue, leaf_lambdas, leaf_level, tHHH_nodes, threshold, p_zero, error, xi, S, logging.WARNING,))
+        jobs.append(p)
+        p.start()
+
+    for i in range(num_of_threads):
+        combine_results += result_queue.get()
+
+    for p in jobs:
+        p.join()
+    #---------------------------------------------------#
+    # Write combined results to logfile
+    with open(logfile, 'wb') as ff:
+        for line in combine_results:
+            ff.write(line+'\n')
+ 
+     
 def main(): 
+    #-------------------------------------------------#
+    # :param leaf_level: Leaf level = log(K), K is number of leaf nodes
     # :param threshold: HHH threshold
     # :param xi: parameter in equation (31) or (32)
     # :param p_zero: initialize p_zero
     # :param error: Error
+    # :param iterations: Num of monte carlo runs
+    # :param num_of_threads: Num of threads
+    leaf_level = 11
     threshold = 200
     p_init = 1 - 1.0 / (2**(1.0/3.0))
     p_zero = p_init * 0.9
-    error = 0.9999
-    error = 0.000001
+    error = 0.1
     xi = 40.0
-    #xi = 108.0
-    #xi = 600000
-    #xi = 6.0
-    iterations = 10
+    iterations = 200
+    num_of_threads = 10
 
-    for leaf_level in range(9, 10):
-        start_time = time.time()
-        print "leaf_level = {0}".format(leaf_level)
-        monte_carlo(leaf_level, iterations, threshold, p_zero, error, xi)
-        end_time = time.time()
-        print "Time elapsed: ", end_time - start_time
-    
-    """
-    leaf_level = 9
     start_time = time.time()
     print "leaf_level = {0}".format(leaf_level)
-    monte_carlo(leaf_level, 1)
+    monte_carlo(leaf_level, iterations, num_of_threads, threshold, p_zero, error, xi)
     end_time = time.time()
     print "Time elapsed: ", end_time - start_time
-    """    
+    
 
 if __name__ == "__main__":
     main() 
