@@ -104,8 +104,8 @@ def yu_algo_main(curr_nodes, leaf_nodes, leaf_level, threshold, num_of_TCAM):
                     break    
      
     used_TCAM = len(next_nodes) 
-    if used_TCAM < num_of_TCAM:
-        print "Warning: not using all available TCAMs, using {0} TCAMs, available {1} TCAMs".format(used_TCAM, num_of_TCAM)
+    #if used_TCAM < num_of_TCAM:
+    #    print "Warning: not using all available TCAMs, using {0} TCAMs, available {1} TCAMs".format(used_TCAM, num_of_TCAM)
     return (HHH_nodes, next_nodes)
      
 
